@@ -1,0 +1,60 @@
+
+memcnt is a C function (or function compatible with and usable from C code)
+with the following signature:
+
+    size_t memcnt(const void *s, int c, size_t n);
+
+which returns the number of bytes (characters) equal to c (converted to an
+unsigned char) in the initial n characters in an array pointed to by s. The
+values in the array will be interpreted as unsigned chars and compared to c.
+
+The function is undefined if s is a null pointer or if n is larger than the
+number of unsigned chars in the array pointed to by s.
+
+The type size_t is as defined by <stddef.h>.
+
+A correct memcnt implementation is:
+
+    size_t memcnt(const void *s, int c, size_t n) {
+        size_t i, count = 0;
+        const unsigned char *p = (const unsigned char *)s, v = (unsigned char)c;
+        for (i = 0; i < n; ++i)
+            if (p[i] == v)
+                ++count;
+        return count;
+    }
+
+Any implementation of memcnt shall return the same value as the above function
+with the same parameters, unless the function is undefined due to one or more
+of the aforementioned conditions.
+
+This repository contains implementations of memcnt, including optimized
+implementations for various architectures. See LICENSE for the license of these
+implementations (the prototype and concept of memcnt are in the public domain).
+memcnt is designed to work on any compiler that supports at least the first
+ISO C standard (C89), but provide optimized implementations if supported.
+
+Only single-core, CPU-only implementations are included. Multi-core or GPU
+implementations will probably get their own repository at some point.
+
+The intended use of this library is to link it statically into programs, but
+dynamic linking is also possible. memcnt.c is a source file that automatically
+includes the correct implementation(s). If you want to choose manually, do
+the following:
+
+1.  Define MEMCNT_NAMED as 0 if you are only compiling one implementation
+    (which will then be called memcnt) or as 1 if you want to compile multiple
+    implementations (which will be named starting with memcnt_). If you do the
+    latter, you must provide your own dispatch function as memcnt to choose
+    which one to use. By default, MEMCNT_NAMED will be set to 0.
+2.  Make sure you have memcnt-impl.h. (This file is used by the memcnt
+    implementations and should not be included by other code.)
+3.  Select one or more of the .c files (one implementation per file) and compile
+    into your program or library.
+
+If your tools do not support the above process, you can skip all of the above
+steps by using memcnt-strict.c. It is however only a standard implementation
+with no optimizations.
+
+test-memcnt.c is a test program for testing memcnt implementations and is not
+needed for use in other programs.
