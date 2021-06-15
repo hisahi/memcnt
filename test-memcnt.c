@@ -42,8 +42,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "memcnt.h"
 
+#if !defined(MEMCNT_C) || MEMCNT_C
 #define MEMCNT_DEBUG 1
 #include "memcnt.c"
+#endif
 
 /* mask &0xFF before giving to function. the implementation should work
    regardless of whether this is 0 or 1, but this might help with debugging */
@@ -112,9 +114,8 @@ void fill_array(int arraySize, int tryCount, int *tries, int *counts) {
 }
 
 int main(int argc, char *argv[]) {
-    int arraySize, try
-        , i, testValue;
-    int tries[TRY_COUNT], counts[CHAR_COUNT] = {};
+    int arraySize, t, i;
+    int tries[TRY_COUNT], counts[CHAR_COUNT];
     size_t trueCount, testCount;
 #if BENCHMARK == 1
     clock_t testStart, testEnd;
@@ -123,7 +124,9 @@ int main(int argc, char *argv[]) {
 #endif
     srand(time(NULL));
     rng_seed = rand() ^ (rand() << 11) ^ (rand() << 23);
+#if MEMCNT_C
     printf("Testing implementation '%s'\n", memcnt_impl_name_);
+#endif
 #if BENCHMARK
     printf("%9s | %3s | %6s | %4s\n", "Size", "Try", "Status", "Time");
 #else
@@ -137,12 +140,12 @@ int main(int argc, char *argv[]) {
 #if !BENCHMARK
         printf("%9d | ", arraySize);
 #endif
-        for (try = 0; try < TRY_COUNT; ++try) {
+        for (t = 0; t < TRY_COUNT; ++t) {
 #if BENCHMARK
-            printf("%9d | %3d | ", arraySize, try + 1);
+            printf("%9d | %3d | ", arraySize, t + 1);
 #endif
             fflush(stdout);
-            i = tries[try];
+            i = tries[t];
 #if MASK
             i &= 255;
 #endif
@@ -170,9 +173,9 @@ int main(int argc, char *argv[]) {
 #endif
             else {
                 puts("FAIL!");
-                printf("Returned value (c=%8x=%2x): %lu\n", i, (unsigned char)i,
+                printf("Returned value (c=%8x=%2x): %zu\n", i, (unsigned char)i,
                        trueCount);
-                printf("  Actual value (c=%8x=%2x): %lu\n", i, (unsigned char)i,
+                printf("  Actual value (c=%8x=%2x): %zu\n", i, (unsigned char)i,
                        testCount);
                 return 1;
             }

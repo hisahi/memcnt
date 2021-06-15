@@ -39,8 +39,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 size_t memcnt(const void *ptr, int value, size_t num) {
     size_t c = 0;
-    const unsigned char *p = ptr;
+    const unsigned char *p = (const unsigned char *)ptr,
+                        v = (unsigned char)value;
     while (num--)
-        c += *p++ == value;
+        c += *p++ == v;
     return c;
 }

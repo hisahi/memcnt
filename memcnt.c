@@ -45,6 +45,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #undef MEMCNT_TMP_REALLYLONGNAME
 
 #include <limits.h>
+/* C99? */
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
 #include <stdint.h>
 #define MEMCNT_C99 1
@@ -53,18 +54,107 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define MEMCNT_C 1
 #include "memcnt-impl.h"
 
-#ifndef MEMCNT_WIDE
-#define MEMCNT_WIDE 1
+#define STRINGIFY(x) #x
+#define STRINGIFYVAL(x) STRINGIFY(x)
+
+/* =============================
+    architecture detection code
+   ============================= */
+
+/* multiarch stuff.
+   expected:
+      MEMCNT_COMPILE_ALL  0 if only one impl is compiled in, 1 if all of them
+      MEMCNT_IMPL         function signature stub (return type and name, but
+                            not the parameters) for implementation compiled
+                            for arch
+      MEMCNT_DEFAULT      function signature stub for default/naive memcnt
+      MEMCNT_CHECK_*      the check for compiling arch A(=*)
+                            ignored if MEMCNT_COMPILE_ALL=1, but must be defined
+                            for the implementation for arch A to be built */
+
+#if defined(UINTPTR_MAX)
+#define MEMCNT_CAN_MULTIARCH 1
+#else
+#define MEMCNT_CAN_MULTIARCH 0
 #endif
 
-#if MEMCNT_NAIVE
-#undef MEMCNT_WIDE
-#define MEMCNT_WIDE 0
+#define MEMCNT_NAME_RAW(arch) memcnt_##arch
+#if MEMCNT_COMPILE_ALL
+#define MEMCNT_NAME(arch) MEMCNT_HEADER memcnt
+#else
+#define MEMCNT_NAME(arch) MEMCNT_HEADER MEMCNT_NAME_RAW(arch)
 #endif
+
+#if defined(__INTEL_COMPILER)
+
+#define MEMCNT_COMPILE_ALL 0
+#define MEMCNT_IMPL(arch) MEMCNT_NAME(arch)
+#define MEMCNT_DEFAULT MEMCNT_IMPL(default)
+
+#define MEMCNT_CHECK_sse2 __SSE2__
+#define MEMCNT_CHECK_avx2 __AVX2__
+
+#elif defined(_MSC_VER)
+
+#define MEMCNT_COMPILE_ALL 0
+#define MEMCNT_IMPL(arch) MEMCNT_NAME(arch)
+#define MEMCNT_DEFAULT MEMCNT_IMPL(default)
+
+#define MEMCNT_CHECK_sse2 _M_AMD64 || _M_X64 || _M_IX86_FP == 2
+#define MEMCNT_CHECK_avx2 __AVX2__
+#define MEMCNT_CHECK_neon __ARM_NEON
+
+#elif defined(__GNUC__)
+
+#define MEMCNT_COMPILE_ALL 0
+/* GCC does not support multiversioning for C, sadly */
+#if MEMCNT_COMPILE_ALL
+#define MEMCNT_IMPL(arch)                                                      \
+    __attribute__((target(MEMCNT_TARGET_##arch))) MEMCNT_NAME(arch)
+#else
+#define MEMCNT_IMPL(arch) MEMCNT_NAME(arch)
+#endif
+#define MEMCNT_DEFAULT MEMCNT_IMPL(default)
+
+#define MEMCNT_CHECK_sse2 __SSE2__
+#define MEMCNT_CHECK_avx2 __AVX2__
+#define MEMCNT_CHECK_neon __ARM_NEON
+
+#define MEMCNT_TARGET_default "default"
+#define MEMCNT_TARGET_sse2 "sse2"
+#define MEMCNT_TARGET_avx2 "avx2"
+#define MEMCNT_TARGET_neon "fpu=neon"
+
+#endif
+
+#if MEMCNT_CAN_MULTIARCH && defined(MEMCNT_IMPL)
+#define MEMCNT_MULTIARCH 1
+#define MEMCNT_COMPILE_FOR(arch)                                               \
+    MEMCNT_CHECK_##arch && !MEMCNT_NO_ARCH_##arch &&                           \
+        (MEMCNT_COMPILE_ALL || !MEMCNT_PICKED)
+#else
+#define MEMCNT_MULTIARCH 0
+#define MEMCNT_COMPILE_FOR(arch)                                               \
+    MEMCNT_CHECK_##arch && !MEMCNT_NO_ARCH_##arch && !MEMCNT_PICKED
+#undef MEMCNT_IMPL
+#define MEMCNT_IMPL(arch) MEMCNT_HEADER memcnt
+#endif
+
+#define MEMCNT_TRAMPOLINE MEMCNT_MULTIARCH && !MEMCNT_COMPILE_ALL
+#if MEMCNT_TRAMPOLINE
+#define MEMCNT_HEADER INLINE size_t
+#else
+#define MEMCNT_HEADER size_t
+#endif
+
+/* =============================
+     optimized implementations
+   ============================= */
 
 #if MEMCNT_C99 && !MEMCNT_NAIVE
 /* order from "most desirable" to "least desirable" within the same arch */
 
+/* Intel AVX2 */
 #if MEMCNT_COMPILE_FOR(avx2)
 #include "memcnt-avx2.c"
 #ifndef MEMCNT_PICKED
@@ -72,6 +162,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 #endif
 
+/* Intel SSE2 */
 #if MEMCNT_COMPILE_FOR(sse2)
 #include "memcnt-sse2.c"
 #ifndef MEMCNT_PICKED
@@ -79,6 +170,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 #endif
 
+/* ARM Neon */
 #if MEMCNT_COMPILE_FOR(neon)
 #include "memcnt-neon.c"
 #ifndef MEMCNT_PICKED
@@ -86,6 +178,21 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 #endif
 
+#endif
+
+/* =============================
+       basic  implementation
+   ============================= */
+
+/* "wide" memcnt deals with machine words */
+#ifndef MEMCNT_WIDE
+#define MEMCNT_WIDE 1
+#endif
+
+/* MEMCNT_NAIVE forces basic implementation */
+#if MEMCNT_NAIVE
+#undef MEMCNT_WIDE
+#define MEMCNT_WIDE 0
 #endif
 
 #if MEMCNT_WIDE
@@ -178,21 +285,23 @@ size_t memcnt(const void *ptr, int value, size_t num) {
     return c;
 }
 
-#if defined(MEMCNT_PICKED) && MEMCNT_TRAMPOLINE
 /* trampoline */
+#if defined(MEMCNT_PICKED) && MEMCNT_TRAMPOLINE
 size_t memcnt(const void *ptr, int value, size_t num) {
     return MEMCNT_PICKED(ptr, value, num);
 }
 #endif
 
+/* debug info */
 #if MEMCNT_DEBUG
+/* name of "best" implementation compiled in */
 const char *memcnt_impl_name_ =
 #ifdef MEMCNT_PICKED
-STRINGIFYVAL(MEMCNT_PICKED)
+    STRINGIFYVAL(MEMCNT_PICKED)
 #else
-STRINGIFYVAL(MEMCNT_NAME_RAW(default))
+    STRINGIFYVAL(MEMCNT_NAME_RAW(default))
 #endif
-;
+    ;
 #endif
 
 #endif

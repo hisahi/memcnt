@@ -35,8 +35,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "memcnt-impl.h"
 
-#include <stdint.h>
 #include <arm_neon.h>
+#include <stdint.h>
 
 INLINE unsigned neon_hsum_u8x16_u(uint8x16_t v) {
     int i;
