@@ -37,8 +37,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "memcnt.h"
 
+/* try to test identifier limits */
 #define MEMCNT_TMP_REALLYLONGNAME 1
-#ifndef MEMCNT_TMP_REALLYLONGNAME
+#if !defined(MEMCNT_TMP_REALLYLONGNAME) || defined(MEMCNT_TMP_REALLYLONGNAME2)
 #include "memcnt-strict.c"
 #else
 #undef MEMCNT_TMP_REALLYLONGNAME
@@ -52,8 +53,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define MEMCNT_C 1
 #include "memcnt-impl.h"
 
-/* order from "most desirable" to "least desirable" */
-
 #ifndef MEMCNT_WIDE
 #define MEMCNT_WIDE 1
 #endif
@@ -64,6 +63,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 
 #if MEMCNT_C99 && !MEMCNT_NAIVE
+/* order from "most desirable" to "least desirable" within the same arch */
+
 #if MEMCNT_COMPILE_FOR(avx2)
 #include "memcnt-avx2.c"
 #ifndef MEMCNT_PICKED
@@ -77,6 +78,14 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define MEMCNT_PICKED MEMCNT_NAME_RAW(sse2)
 #endif
 #endif
+
+#if MEMCNT_COMPILE_FOR(neon)
+#include "memcnt-neon.c"
+#ifndef MEMCNT_PICKED
+#define MEMCNT_PICKED MEMCNT_NAME_RAW(neon)
+#endif
+#endif
+
 #endif
 
 #if MEMCNT_WIDE
