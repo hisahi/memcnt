@@ -35,10 +35,12 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "memcnt-impl.h"
 
-#define AVX2_UNALIGNED 0
-
 #include "immintrin.h"
 #include <stdint.h>
+
+#ifndef UNROLL
+#define UNROLL 4
+#endif
 
 INLINE unsigned avx2_hsum_mm256_epi32(__m256i v) {
     __m128i lo = _mm256_castsi256_si128(v), hi = _mm256_extracti128_si256(v, 1),
@@ -64,37 +66,55 @@ MEMCNT_IMPL(avx2)(const void *ptr, int value, size_t num) {
     size_t c = 0;
 
     if (num >= 64) {
-        __m256i cmp = _mm256_set1_epi8((char)v), sums = _mm256_setzero_si256();
+        int k;
+        __m256i cmp = _mm256_set1_epi8((char)v), sums[UNROLL];
         uint8_t j = 1;
-#if !AVX2_UNALIGNED
         const __m256i *wp;
         while (NOT_ALIGNED(p, 0x20))
             --num, c += *p++ == v;
         wp = (const __m256i *)p;
+        for (k = 0; k < UNROLL; ++k)
+            sums[k] = _mm256_setzero_si256();
+
+#if UNROLL > 1
+        while (num >= 0x20 * UNROLL) {
+            __m256i tmp[UNROLL];
+            num -= 0x20 * UNROLL;
+            for (k = 0; k < UNROLL; ++k)
+                tmp[k] = *wp++;
+            for (k = 0; k < UNROLL; ++k)
+                sums[k] =
+                    _mm256_sub_epi8(sums[k], _mm256_cmpeq_epi8(cmp, tmp[k]));
+
+            if (++j == 0) {
+                for (k = 0; k < UNROLL; ++k)
+                    c += avx2_hsum_mm256_epu8(sums[k]);
+                for (k = 0; k < UNROLL; ++k)
+                    sums[k] = _mm256_setzero_si256();
+                j = 1;
+            }
+        }
+
+        for (k = 0; k < UNROLL; ++k)
+            c += avx2_hsum_mm256_epu8(sums[k]);
+        sums[0] = _mm256_setzero_si256();
 #endif
 
         while (num >= 0x20) {
             __m256i tmp;
             num -= 0x20;
-#if AVX2_UNALIGNED
-            tmp = _mm256_loadu_si256((const void *)p);
-            p += 0x20;
-#else
             tmp = *wp++;
-#endif
-            sums = _mm256_sub_epi8(sums, _mm256_cmpeq_epi8(cmp, tmp));
+            sums[0] = _mm256_sub_epi8(sums[0], _mm256_cmpeq_epi8(cmp, tmp));
 
             if (++j == 0) {
-                c += avx2_hsum_mm256_epu8(sums);
-                sums = _mm256_setzero_si256();
+                c += avx2_hsum_mm256_epu8(sums[0]);
+                sums[0] = _mm256_setzero_si256();
                 j = 1;
             }
         }
 
-        c += avx2_hsum_mm256_epu8(sums);
-#if !AVX2_UNALIGNED
+        c += avx2_hsum_mm256_epu8(sums[0]);
         p = (const unsigned char *)wp;
-#endif
     }
     while (num--)
         c += *p++ == v;

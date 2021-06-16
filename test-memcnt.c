@@ -228,14 +228,14 @@ int main(int argc, char *argv[]) {
     if (testCount != arraySize) {
         printf("Simple test failed! memcnt should have returned %zu for an\n"
                "array filled with the check value, but it returned %zu.\n"
-               "Go fix it!", arraySize, testCount);
+               "Go fix it!\n", arraySize, testCount);
         return 1;
     }
     testCount = memcnt(buf, 0, arraySize);
     if (testCount != 0) {
         printf("Simple test failed! memcnt should have returned %zu for an\n"
                "array filled with some other value, but it returned %zu.\n"
-               "Go fix it!", (size_t)0, testCount);
+               "Go fix it!\n", (size_t)0, testCount);
         return 1;
     }
     arraySize = 9000;
