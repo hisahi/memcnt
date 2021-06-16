@@ -34,6 +34,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef MEMCNT_IMPL_H
 #define MEMCNT_IMPL_H
 
+/* size_t */
 #include "stddef.h"
 
 /* if this is not memcnt.c */

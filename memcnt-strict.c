@@ -33,15 +33,38 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /* a simple implementation for simple (non-standard) compilers */
 
-#include "stddef.h"
-/* might be useful if no stddef.h? */
-/* typedef unsigned long size_t; */
+/* use K&R C style function definition */
+/* #define KR 1 */
 
-size_t memcnt(const void *ptr, int value, size_t num) {
+/* use typedef instead of stddef.h for size_t. implied if KR set */
+/* #define NODEF 1 */
+
+#ifdef KR
+#define CONST
+#define BYTE char
+#define size_t unsigned
+#else
+#define CONST const
+#define BYTE unsigned char
+#ifndef NODEF
+#include <stddef.h>
+#else
+#define size_t unsigned long
+#endif
+#endif
+
+#ifdef KR
+size_t memcnt(ptr, value, num)
+CONST char *ptr;
+int value;
+size_t num;
+{
+#else
+size_t memcnt(CONST void *ptr, int value, size_t num) {
+#endif
     size_t c = 0;
-    const unsigned char *p = (const unsigned char *)ptr,
-                        v = (unsigned char)value;
+    CONST BYTE *p = (CONST BYTE *)ptr, v = (BYTE)value;
     while (num--)
-        c += *p++ == v;
+        c += *(p++) == v;
     return c;
 }

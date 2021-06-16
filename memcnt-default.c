@@ -33,8 +33,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /* memcnt_default (default implementation) */
 
-#include <stddef.h>
-
 #include "memcnt-impl.h"
 
 MEMCNT_DEFAULT(const void *ptr, int value, size_t num) {

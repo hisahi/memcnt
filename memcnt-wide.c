@@ -36,7 +36,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
    word, and typedef memcnt_word_t, the corresponding type for that word */
 
 #include <limits.h>
-#include <stddef.h>
 #include <stdint.h>
 
 #include "memcnt-impl.h"
