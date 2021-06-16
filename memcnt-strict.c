@@ -1,7 +1,7 @@
 /*
 
 memcnt -- C function for counting bytes equal to value in a buffer
-Copyright (c) 2021 Sampo Hippeläinen
+Copyright (c) 2021 Sampo Hippeläinen (hisahi)
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without

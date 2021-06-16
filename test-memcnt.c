@@ -1,7 +1,7 @@
 /*
 
 memcnt -- C function for counting bytes equal to value in a buffer
-Copyright (c) 2021 Sampo Hippeläinen
+Copyright (c) 2021 Sampo Hippeläinen (hisahi)
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -54,27 +54,35 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 
 /* 0 = no benchmark */
-/* 1 = benchmark using clock() */
+/* 1 = benchmark using clock() (CPU time) */
 /* 2 = benchmark using x86 rdtsc */
+/* 3 = benchmark using clock_gettime() (monotonic time) */
 #ifndef BENCHMARK
-#define BENCHMARK 1
+#define BENCHMARK 0
 #endif
 
 #define CHAR_COUNT (1 << CHAR_BIT)
 
 #if BENCHMARK
 #define MIN_ARRAY_SIZE 0
+#if LARGE
+#define MAX_ARRAY_SIZE 1000000000
+#else
 #define MAX_ARRAY_SIZE 100000000
+#endif
 #define ARRAY_MUL 10
 #define TRY_COUNT 3
+#define MAX_TRY_COUNT 6
 #else
 #define MIN_ARRAY_SIZE 0
 #define MAX_ARRAY_SIZE 531441
 #define ARRAY_MUL 3
 #define TRY_COUNT CHAR_COUNT
+#define MAX_TRY_COUNT CHAR_COUNT
 #endif
 
 #if BENCHMARK == 2
+#if defined(__i386__) || defined(__amd64__) || defined(_M_IX86) || defined(_M_X64)
 #ifdef _MSC_VER
 #include <intrin.h>
 #else
@@ -84,6 +92,29 @@ typedef unsigned long long rdtsc_t;
 rdtsc_t rdtsc() {
     _mm_lfence();
     return __rdtsc();
+}
+#elif defined(__aarch64__)
+typedef long long rdtsc_t;
+rdtsc_t rdtsc() {
+    rdtsc_t x;
+    asm volatile("mrs %0, cntvct_el0" : "=r"(x));
+    return x;
+}
+#else
+#error BENCHMARK=2 not supported on your platform
+#endif
+#endif
+
+#if BENCHMARK == 3
+static inline void timediff(struct timespec *r, struct timespec *a,
+                            struct timespec *b) {
+    if (b->tv_nsec < a->tv_nsec) {
+        r->tv_sec = b->tv_sec - a->tv_sec - 1;
+        r->tv_nsec = b->tv_nsec - a->tv_nsec + 1000000000LL;
+    } else {
+        r->tv_sec = b->tv_sec - a->tv_sec;
+        r->tv_nsec = b->tv_nsec - a->tv_nsec;
+    }
 }
 #endif
 
@@ -114,35 +145,51 @@ void fill_array(int arraySize, int tryCount, int *tries, int *counts) {
 }
 
 int main(int argc, char *argv[]) {
-    int arraySize, t, i;
-    int tries[TRY_COUNT], counts[CHAR_COUNT];
-    size_t trueCount, testCount;
+    int t, i, tries[MAX_TRY_COUNT], counts[CHAR_COUNT];
+    size_t arraySize, trueCount, testCount;
 #if BENCHMARK == 1
     clock_t testStart, testEnd;
 #elif BENCHMARK == 2
     rdtsc_t testStart, testEnd;
+#elif BENCHMARK == 3
+    struct timespec testStart, testEnd, testDiff;
 #endif
     srand(time(NULL));
     rng_seed = rand() ^ (rand() << 11) ^ (rand() << 23);
 #if MEMCNT_C
     printf("Testing implementation '%s'\n", memcnt_impl_name_);
-#endif
-#if BENCHMARK
-    printf("%9s | %3s | %6s | %4s\n", "Size", "Try", "Status", "Time");
 #else
-    printf("%9s | %9s\n", "Size", "Status");
+    printf("Testing manually linked implementation");
+#endif
+#if BENCHMARK == 1
+    puts("Benchmark: measuring approximate CPU time in microseconds");
+#elif BENCHMARK == 2
+    puts("Benchmark: measuring runtime in reference cycles");
+#elif BENCHMARK == 3
+    puts("Benchmark: measuring monotonic runtime in microseconds");
+#endif
+    puts("");
+#if BENCHMARK
+    printf("%12s | %3s | %6s | %15s | %s\n", "Size", "Try", "Status", "Runtime",
+           "Average Speed");
+#else
+    printf("%12s | %9s\n", "Size", "Status");
 #endif
     for (arraySize = MIN_ARRAY_SIZE; arraySize <= MAX_ARRAY_SIZE;
          arraySize ? arraySize *= ARRAY_MUL : ++arraySize) {
-        fill_array(arraySize, TRY_COUNT, tries, counts);
+        int tryCount = arraySize == MAX_ARRAY_SIZE ||
+                               arraySize * ARRAY_MUL > MAX_ARRAY_SIZE
+                           ? MAX_TRY_COUNT
+                           : TRY_COUNT;
+        fill_array(arraySize, tryCount, tries, counts);
 
         i = 0;
 #if !BENCHMARK
-        printf("%9d | ", arraySize);
+        printf("%12zu | ", arraySize);
 #endif
-        for (t = 0; t < TRY_COUNT; ++t) {
+        for (t = 0; t < tryCount; ++t) {
 #if BENCHMARK
-            printf("%9d | %3d | ", arraySize, t + 1);
+            printf("%12zu | %3d | ", arraySize, t + 1);
 #endif
             fflush(stdout);
             i = tries[t];
@@ -154,24 +201,51 @@ int main(int argc, char *argv[]) {
             testStart = clock();
 #elif BENCHMARK == 2
             testStart = rdtsc();
+#elif BENCHMARK == 3
+            clock_gettime(CLOCK_MONOTONIC, &testStart);
 #endif
             testCount = memcnt(buf, i, arraySize);
 #if BENCHMARK == 1
             testEnd = clock();
 #elif BENCHMARK == 2
             testEnd = rdtsc();
+#elif BENCHMARK == 3
+            clock_gettime(CLOCK_MONOTONIC, &testEnd);
+            timediff(&testDiff, &testStart, &testEnd);
 #endif
-            if (testCount == trueCount)
+            if (testCount == trueCount) {
 #if !BENCHMARK
-                ;
 #elif BENCHMARK == 1
-                printf("OK     | %12ld clk\n", testEnd - testStart);
+                unsigned long long interval = testEnd - testStart;
+                printf("OK     | ~%11llu us | ",
+                       interval * 1000000ULL / CLOCKS_PER_SEC);
+                if (arraySize > 10 && interval > 0)
+                    printf("%11.2f MB/s\n",
+                           arraySize / ((double)interval / CLOCKS_PER_SEC) /
+                               1000000ULL);
+                else
+                    puts("-");
 #elif BENCHMARK == 2
-                printf("OK     | %12llu refcyc\n", testEnd - testStart);
+                printf("OK     | %12llu rc | ", testEnd - testStart);
+                if (arraySize > 10)
+                    printf("%6.2f B/rc\n",
+                           arraySize / (double)(testEnd - testStart));
+                else
+                    puts("-");
+#elif BENCHMARK == 3
+                unsigned long long interval = (testDiff.tv_nsec + 999) / 1000;
+                interval += testDiff.tv_sec * 1000000ULL;
+                printf("OK     | ~%11llu us | ", interval);
+                if (arraySize > 10 && interval > 0)
+                    printf("%11.2f MB/s\n",
+                           arraySize / ((double)interval / CLOCKS_PER_SEC) /
+                               1000000ULL);
+                else
+                    puts("-");
 #else
                 puts("OK");
 #endif
-            else {
+            } else {
                 puts("FAIL!");
                 printf("Returned value (c=%8x=%2x): %zu\n", i, (unsigned char)i,
                        trueCount);
