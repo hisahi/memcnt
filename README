@@ -37,6 +37,9 @@ ISO C standard (C89), but provide optimized implementations if supported.
 Only single-core, CPU-only implementations are included. Multi-core or GPU
 implementations will probably get their own repository at some point.
 
+The implementations for memcnt were originally split from an experimental
+version of lrg <https://github.com/hisahi/lrg>.
+
 The intended use of this library is to link it statically into programs, but
 dynamic linking is also possible. memcnt.c is a source file that automatically
 includes the correct implementation(s). If you want to choose manually, do

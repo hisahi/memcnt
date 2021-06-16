@@ -65,6 +65,7 @@ size_t memcnt(CONST void *ptr, int value, size_t num) {
     size_t c = 0;
     CONST BYTE *p = (CONST BYTE *)ptr, v = (BYTE)value;
     while (num--)
-        c += *(p++) == v;
+        if (*p++ == v)
+            ++c;
     return c;
 }

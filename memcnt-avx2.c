@@ -64,9 +64,7 @@ MEMCNT_IMPL(avx2)(const void *ptr, int value, size_t num) {
     size_t c = 0;
 
     if (num >= 64) {
-        __m128i cmp_tmp = _mm_cvtsi32_si128(v);
-        __m256i cmp = _mm256_broadcastb_epi8(cmp_tmp),
-                sums = _mm256_setzero_si256();
+        __m256i cmp = _mm256_set1_epi8((char)v), sums = _mm256_setzero_si256();
         uint8_t j = 1;
 #if !AVX2_UNALIGNED
         const __m256i *wp;
