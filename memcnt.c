@@ -120,6 +120,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #define MEMCNT_CHECK_sse2 __SSE2__
 #define MEMCNT_CHECK_avx2 __AVX2__
+#define MEMCNT_CHECK_avx512 __AVX512BW__
 #define MEMCNT_CHECK_neon __ARM_NEON
 
 #define MEMCNT_TARGET_default "default"
@@ -155,6 +156,14 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #if MEMCNT_C99 && !MEMCNT_NAIVE
 /* order from "most desirable" to "least desirable" within the same arch */
+
+/* Intel AVX-512(BW) */
+#if MEMCNT_COMPILE_FOR(avx512)
+#include "memcnt-avx512.c"
+#ifndef MEMCNT_PICKED
+#define MEMCNT_PICKED MEMCNT_NAME_RAW(avx512)
+#endif
+#endif
 
 /* Intel AVX2 */
 #if MEMCNT_COMPILE_FOR(avx2)

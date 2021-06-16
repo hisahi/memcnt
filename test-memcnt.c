@@ -172,9 +172,11 @@ void fill_array(int arraySize, int tryCount, int *tries, int *counts) {
         ++counts[(unsigned char)(buf[i] = rng())];
 }
 
+#if USE_MALLOC
 static void free_buf(void) {
     free(buf);
 }
+#endif
 
 int main(int argc, char *argv[]) {
     int t, i, tries[MAX_TRY_COUNT], counts[CHAR_COUNT], batchNum, tryCount;
@@ -222,6 +224,7 @@ int main(int argc, char *argv[]) {
     arraySize = MAX_ARRAY_SIZE;
     memset(buf, UCHAR_MAX, arraySize);
     testCount = memcnt(buf, UCHAR_MAX, arraySize);
+    puts("Running simple sanity tests");
     if (testCount != arraySize) {
         printf("Simple test failed! memcnt should have returned %zu for an\n"
                "array filled with the check value, but it returned %zu.\n"
@@ -235,20 +238,70 @@ int main(int argc, char *argv[]) {
                "Go fix it!", (size_t)0, testCount);
         return 1;
     }
-    testCount = memcnt(buf + 3, UCHAR_MAX, arraySize - 3);
-    if (testCount != arraySize - 3) {
-        printf("Unaligned test failed! memcnt should have returned %zu for an\n"
-               "array filled with the check value, but it returned %zu.\n"
-               "Go fix it!", arraySize - 3, testCount);
-        return 1;
+    arraySize = 9000;
+    puts("Running unaligned tests");
+    for (i = 0; i < 256 && i < arraySize / 2; ++i) {
+        testCount = memcnt(buf + i, UCHAR_MAX, arraySize - 2 * i);
+        if (testCount != arraySize - 2 * i) {
+            printf("1 (i,-i) i=%d SZ=%zu buf=%p\n", i, arraySize, buf);
+            printf(
+                "Unaligned test failed! memcnt should have returned %zu for an\n"
+                "array filled with the check value, but it returned %zu.\n"
+                "Go fix it!\n", arraySize - 2 * i, testCount);
+            return 1;
+        }
+        
+        testCount = memcnt(buf + i, UCHAR_MAX, arraySize - i);
+        if (testCount != arraySize - i) {
+            printf("1 (i,i) i=%d SZ=%zu buf=%p\n", i, arraySize, buf);
+            printf(
+                "Unaligned test failed! memcnt should have returned %zu for an\n"
+                "array filled with the check value, but it returned %zu.\n"
+                "Go fix it!\n", arraySize - i, testCount);
+            return 1;
+        }
+        
+        testCount = memcnt(buf, UCHAR_MAX, arraySize - i);
+        if (testCount != arraySize - i) {
+            printf("1 (0,-i) i=%d SZ=%zu buf=%p\n", i, arraySize, buf);
+            printf(
+                "Unaligned test failed! memcnt should have returned %zu for an\n"
+                "array filled with the check value, but it returned %zu.\n"
+                "Go fix it!\n", arraySize - i, testCount);
+            return 1;
+        }
+        
+        testCount = memcnt(buf + i, 0, arraySize - 2 * i);
+        if (testCount != 0) {
+            printf("0 (i,-i) i=%d SZ=%zu buf=%p\n", i, arraySize, buf);
+            printf(
+                "Unaligned test failed! memcnt should have returned %zu for an\n"
+                "array filled with the check value, but it returned %zu.\n"
+                "Go fix it!\n", (size_t)0, testCount);
+            return 1;
+        }
+        
+        testCount = memcnt(buf + i, 0, arraySize - i);
+        if (testCount != 0) {
+            printf("0 (i,i) i=%d SZ=%zu buf=%p\n", i, arraySize, buf);
+            printf(
+                "Unaligned test failed! memcnt should have returned %zu for an\n"
+                "array filled with the check value, but it returned %zu.\n"
+                "Go fix it!\n", (size_t)0, testCount);
+            return 1;
+        }
+        
+        testCount = memcnt(buf, 0, arraySize - i);
+        if (testCount != 0) {
+            printf("0 (0,-i) i=%d SZ=%zu buf=%p\n", i, arraySize, buf);
+            printf(
+                "Unaligned test failed! memcnt should have returned %zu for an\n"
+                "array filled with the check value, but it returned %zu.\n"
+                "Go fix it!\n", (size_t)0, testCount);
+            return 1;
+        }
     }
-    testCount = memcnt(buf, UCHAR_MAX, arraySize - 1);
-    if (testCount != arraySize - 1) {
-        printf("Unaligned test failed! memcnt should have returned %zu for an\n"
-               "array filled with the check value, but it returned %zu.\n"
-               "Go fix it!", arraySize - 1, testCount);
-        return 1;
-    }
+    puts("Running random stress tests");
 #endif
     puts("");
 #if BENCHMARK
@@ -357,5 +410,8 @@ int main(int argc, char *argv[]) {
         }
     }
     puts("ALL OK");
+#if !BENCHMARK
+    puts("Now try benchmarking... (define BENCHMARK with 1, 2 or 3)");
+#endif
     return 0;
 }
