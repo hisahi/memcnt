@@ -55,7 +55,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /* 0 = no benchmark */
 /* 1 = benchmark using clock() (CPU time) */
-/* 2 = benchmark using x86 rdtsc */
+/* 2 = benchmark using CPU specific timers
+                amd64/x86: rdtsc
+                ARM: cntvct_el0 */
 /* 3 = benchmark using clock_gettime() (monotonic time) */
 #ifndef BENCHMARK
 #define BENCHMARK 0
@@ -82,24 +84,35 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 
 #if BENCHMARK == 2
-#if defined(__i386__) || defined(__amd64__) || defined(_M_IX86) || defined(_M_X64)
+#if defined(__i386__) || defined(__amd64__) || defined(_M_IX86) ||             \
+    defined(_M_X64)
 #ifdef _MSC_VER
 #include <intrin.h>
 #else
 #include <x86intrin.h>
 #endif
-typedef unsigned long long rdtsc_t;
-rdtsc_t rdtsc() {
+typedef unsigned long long cputime_t;
+cputime_t getcputime() {
+    cputime_t x;
     _mm_lfence();
-    return __rdtsc();
-}
-#elif defined(__aarch64__)
-typedef long long rdtsc_t;
-rdtsc_t rdtsc() {
-    rdtsc_t x;
-    asm volatile("mrs %0, cntvct_el0" : "=r"(x));
+    x = __rdtsc();
+    _mm_lfence();
     return x;
 }
+#define UNIT_CYCLES 1
+#elif defined(__aarch64__)
+typedef unsigned long long cputime_t;
+cputime_t getcputime() {
+    cputime_t x;
+    asm volatile("isb; mrs %0, cntvct_el0" : "=r"(x));
+    return x;
+}
+long long getcpufreq() {
+    unsigned long long x;
+    asm volatile("mrs %0, cntfrq_el0" : "=r"(x));
+    return x;
+}
+#define UNIT_CYCLES 0
 #else
 #error BENCHMARK=2 not supported on your platform
 #endif
@@ -118,7 +131,17 @@ static inline void timediff(struct timespec *r, struct timespec *a,
 }
 #endif
 
+#if MAX_ARRAY_SIZE < 1000000
+#define USE_MALLOC 0
+#else
+#define USE_MALLOC 1
+#endif
+
+#if USE_MALLOC
+unsigned char *buf;
+#else
 unsigned char buf[MAX_ARRAY_SIZE];
+#endif
 
 static int rng_seed = 0;
 
@@ -150,21 +173,39 @@ int main(int argc, char *argv[]) {
 #if BENCHMARK == 1
     clock_t testStart, testEnd;
 #elif BENCHMARK == 2
-    rdtsc_t testStart, testEnd;
+    cputime_t testStart, testEnd;
+#if !UNIT_CYCLES
+    unsigned long long clockFreq;
+#endif
 #elif BENCHMARK == 3
     struct timespec testStart, testEnd, testDiff;
+#elif BENCHMARK
+#error invalid BENCHMARK setting
+#endif
+#if USE_MALLOC
+    buf = malloc(MAX_ARRAY_SIZE);
+    if (!buf) {
+        puts("Could not allocate the buffer for testing.");
+        puts("Maybe MAX_ARRAY_SIZE is too big for your system?");
+        return 1;
+    }
 #endif
     srand(time(NULL));
     rng_seed = rand() ^ (rand() << 11) ^ (rand() << 23);
 #if MEMCNT_C
     printf("Testing implementation '%s'\n", memcnt_impl_name_);
 #else
-    printf("Testing manually linked implementation");
+    puts("Testing manually linked implementation");
 #endif
 #if BENCHMARK == 1
     puts("Benchmark: measuring approximate CPU time in microseconds");
 #elif BENCHMARK == 2
-    puts("Benchmark: measuring runtime in reference cycles");
+#if UNIT_CYCLES
+    puts("Benchmark: measuring (CPU) runtime in microseconds");
+#else
+    puts("Benchmark: measuring (CPU) runtime in reference cycles");
+    clockFreq = getcpufreq();
+#endif
 #elif BENCHMARK == 3
     puts("Benchmark: measuring monotonic runtime in microseconds");
 #endif
@@ -200,7 +241,7 @@ int main(int argc, char *argv[]) {
 #if BENCHMARK == 1
             testStart = clock();
 #elif BENCHMARK == 2
-            testStart = rdtsc();
+            testStart = getcputime();
 #elif BENCHMARK == 3
             clock_gettime(CLOCK_MONOTONIC, &testStart);
 #endif
@@ -208,7 +249,7 @@ int main(int argc, char *argv[]) {
 #if BENCHMARK == 1
             testEnd = clock();
 #elif BENCHMARK == 2
-            testEnd = rdtsc();
+            testEnd = getcputime();
 #elif BENCHMARK == 3
             clock_gettime(CLOCK_MONOTONIC, &testEnd);
             timediff(&testDiff, &testStart, &testEnd);
@@ -220,18 +261,28 @@ int main(int argc, char *argv[]) {
                 printf("OK     | ~%11llu us | ",
                        interval * 1000000ULL / CLOCKS_PER_SEC);
                 if (arraySize > 10 && interval > 0)
-                    printf("%11.2f MB/s\n",
+                    printf("%11.2f MB/s_CPU\n",
                            arraySize / ((double)interval / CLOCKS_PER_SEC) /
                                1000000ULL);
                 else
                     puts("-");
 #elif BENCHMARK == 2
-                printf("OK     | %12llu rc | ", testEnd - testStart);
-                if (arraySize > 10)
-                    printf("%6.2f B/rc\n",
-                           arraySize / (double)(testEnd - testStart));
+#if UNIT_CYCLES
+                unsigned long long interval = testEnd - testStart;
+                printf("OK     | %12llu rc | ", interval);
+                if (arraySize > 10 && interval > 0)
+                    printf("%6.2f B/rc\n", arraySize / (double)interval);
                 else
                     puts("-");
+#else
+                unsigned long long interval =
+                    (testEnd - testStart) * 1000000ULL / clockFreq;
+                printf("OK     | %12llu us | ", interval);
+                if (arraySize > 10)
+                    printf("%6.2f MB/s_CPU\n", arraySize / (double)interval);
+                else
+                    puts("-");
+#endif
 #elif BENCHMARK == 3
                 unsigned long long interval = (testDiff.tv_nsec + 999) / 1000;
                 interval += testDiff.tv_sec * 1000000ULL;
@@ -242,8 +293,6 @@ int main(int argc, char *argv[]) {
                                1000000ULL);
                 else
                     puts("-");
-#else
-                puts("OK");
 #endif
             } else {
                 puts("FAIL!");
@@ -259,5 +308,8 @@ int main(int argc, char *argv[]) {
 #endif
     }
     puts("ALL OK");
+#if USE_MALLOC
+    free(buf);
+#endif
     return 0;
 }

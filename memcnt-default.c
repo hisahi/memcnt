@@ -1,7 +1,7 @@
 /*
 
 memcnt -- C function for counting bytes equal to value in a buffer
-Copyright (c) 2021 Sampo Hippeläinen
+Copyright (c) 2021 Sampo Hippeläinen (hisahi)
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -31,30 +31,16 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 */
 
-#ifndef MEMCNT_IMPL_H
-#define MEMCNT_IMPL_H
+/* memcnt_default (default implementation) */
 
-#include "stddef.h"
+#include <stddef.h>
 
-/* if this is not memcnt.c */
-#if !MEMCNT_C
+#include "memcnt-impl.h"
 
-#if MEMCNT_NAMED
-#define MEMCNT_IMPL(arch) size_t memcnt_##arch
-#define MEMCNT_DEFAULT size_t memcnt_default
-#else
-#define MEMCNT_IMPL(arch) size_t memcnt
-#define MEMCNT_DEFAULT size_t memcnt
-#endif
-
-#endif
-
-#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
-#define INLINE static inline
-#define NOT_ALIGNED(p, m) ((uintptr_t)(p) & ((m)-1))
-#else
-#define INLINE static
-#define NOT_ALIGNED(p, m) ((unsigned long)(p) & ((m)-1))
-#endif
-
-#endif /* MEMCNT_IMPL_H */
+MEMCNT_DEFAULT(const void *ptr, int value, size_t num) {
+    size_t c = 0;
+    const unsigned char *p = (unsigned char *)ptr, v = (unsigned char)value;
+    while (num--)
+        c += *p++ == v;
+    return c;
+}

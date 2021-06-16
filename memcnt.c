@@ -183,6 +183,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /* =============================
        basic  implementation
    ============================= */
+/* (includes -default and -wide) */
 
 /* "wide" memcnt deals with machine words */
 #ifndef MEMCNT_WIDE
@@ -217,73 +218,18 @@ typedef uint32_t memcnt_word_t;
 #endif
 
 #if MEMCNT_WIDE
-#if __GNUC__
-#define popcount32 __builtin_popcount
-#define popcount64 __builtin_popcountl
-#else
-INLINE int popcount32(uint32_t v) {
-    int c = 0;
-    for (; v; ++c)
-        v &= v - 1;
-    return c;
-}
-INLINE int popcount64(uint64_t v) {
-    int c = 0;
-    for (; v; ++c)
-        v &= v - 1;
-    return c;
-}
+#include "memcnt-wide.c"
+#ifndef MEMCNT_PICKED
+#define MEMCNT_PICKED MEMCNT_NAME_RAW(wide)
 #endif
 #endif
 
-#ifdef MEMCNT_PICKED
-MEMCNT_DEFAULT(const void *ptr, int value, size_t num) {
-#else
-size_t memcnt(const void *ptr, int value, size_t num) {
+#ifndef MEMCNT_PICKED
+#undef MEMCNT_DEFAULT
+#define MEMCNT_DEFAULT size_t memcnt
 #endif
-    size_t c = 0;
-    const unsigned char *p = (unsigned char *)ptr, v = value;
-#if MEMCNT_WIDE
-    if (num > MEMCNT_WORD * 4) {
-        /* mask = bytes with only their lowest bit set in word */
-#if MEMCNT_WORD == 32
-        const memcnt_word_t mask = 0x01010101ULL;
-#define POPCOUNT popcount32
-#elif MEMCNT_WORD == 64
-        const memcnt_word_t mask = 0x0101010101010101ULL;
-#define POPCOUNT popcount64
-#endif
-        /* with * mask, we "broadcast" the byte all over the word */
-        memcnt_word_t cmp = (memcnt_word_t)(v * mask), tmp;
-        const memcnt_word_t *wp;
-        /* handle unaligned ptr */
-        while ((uintptr_t)p & (MEMCNT_COUNT - 1))
-            --num, c += *p++ == value;
-        wp = (const memcnt_word_t *)p;
-        while (num >= MEMCNT_COUNT) {
-            num -= MEMCNT_COUNT;
-            /* XOR with cmp - now bytes equal to value are 00s */
-            tmp = *wp++ ^ cmp;
-            /* count zero bytes in word tmp and add to c */
-            /* shifts make sure the low bits in each byte are set if any
-               of the bits in the byte were set */
-            tmp |= tmp >> 4;
-            tmp |= tmp >> 2;
-            tmp |= tmp >> 1;
-            /* masks out anything else but the lowest bits in each byte */
-            tmp &= mask;
-            /* popcount will then give us the number of bytes that weren't 00.
-               subtract from the number of bytes in the word to inverse */
-            c += MEMCNT_COUNT - POPCOUNT(tmp);
-        }
-        /* assign pointer back to handle unaligned again */
-        p = (const unsigned char *)wp;
-    }
-#endif
-    while (num--)
-        c += *p++ == v;
-    return c;
-}
+
+#include "memcnt-default.c"
 
 /* trampoline */
 #if defined(MEMCNT_PICKED) && MEMCNT_TRAMPOLINE
