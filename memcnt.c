@@ -85,7 +85,15 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define MEMCNT_NAME(arch) MEMCNT_HEADER MEMCNT_NAME_RAW(arch)
 #endif
 
-#if defined(__INTEL_COMPILER)
+#if defined(__IBMC__)
+
+#define MEMCNT_COMPILE_ALL 0
+#define MEMCNT_IMPL(arch) MEMCNT_NAME(arch)
+#define MEMCNT_DEFAULT MEMCNT_IMPL(default)
+
+#define MEMCNT_CHECK_altivec __VEC__
+
+#elif defined(__INTEL_COMPILER)
 
 #define MEMCNT_COMPILE_ALL 0
 #define MEMCNT_IMPL(arch) MEMCNT_NAME(arch)
@@ -122,6 +130,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define MEMCNT_CHECK_avx2 __AVX2__
 #define MEMCNT_CHECK_avx512 __AVX512BW__
 #define MEMCNT_CHECK_neon __ARM_NEON
+#define MEMCNT_CHECK_altivec __ALTIVEC__
 
 #define MEMCNT_TARGET_default "default"
 #define MEMCNT_TARGET_sse2 "sse2"
@@ -186,6 +195,14 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "memcnt-neon.c"
 #ifndef MEMCNT_PICKED
 #define MEMCNT_PICKED MEMCNT_NAME_RAW(neon)
+#endif
+#endif
+
+/* POWER AltiVec/VMX */
+#if MEMCNT_COMPILE_FOR(altivec)
+#include "memcnt-altivec.c"
+#ifndef MEMCNT_PICKED
+#define MEMCNT_PICKED MEMCNT_NAME_RAW(altivec)
 #endif
 #endif
 
