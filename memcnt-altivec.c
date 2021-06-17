@@ -31,7 +31,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 */
 
-/* memcnt_sse2 (for Intel SSE2) */
+/* memcnt_altivec (for PowerPC/POWER AltiVec/VMX) */
 
 #include "memcnt-impl.h"
 
