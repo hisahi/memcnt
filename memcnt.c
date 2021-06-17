@@ -122,11 +122,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define MEMCNT_CHECK_avx2 __AVX2__
 #define MEMCNT_CHECK_avx512 __AVX512BW__
 #define MEMCNT_CHECK_neon __ARM_NEON
+#define MEMCNT_CHECK_wasm_simd __wasm_simd128__
 
 #define MEMCNT_TARGET_default "default"
 #define MEMCNT_TARGET_sse2 "sse2"
 #define MEMCNT_TARGET_avx2 "avx2"
 #define MEMCNT_TARGET_neon "fpu=neon"
+#define MEMCNT_TARGET_wasm_simd "wasm64"
 
 #endif
 
@@ -186,6 +188,14 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "memcnt-neon.c"
 #ifndef MEMCNT_PICKED
 #define MEMCNT_PICKED MEMCNT_NAME_RAW(neon)
+#endif
+#endif
+
+/* WebAssembly SIMD */
+#if MEMCNT_COMPILE_FOR(wasm_simd)
+#include "memcnt-wasm-simd.c"
+#ifndef MEMCNT_PICKED
+#define MEMCNT_PICKED MEMCNT_NAME_RAW(wasm_simd)
 #endif
 #endif
 
