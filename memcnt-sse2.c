@@ -35,7 +35,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "memcnt-impl.h"
 
-#include "emmintrin.h"
+#include <emmintrin.h>
 #include <stdint.h>
 
 INLINE unsigned sse2_hsum_mm128_epu8(__m128i v) {
