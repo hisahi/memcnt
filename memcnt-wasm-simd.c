@@ -38,8 +38,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdint.h>
 #include <wasm_simd128.h>
 
-/* for some bizarre reason these names aren't defined yet,
-   so we have to use macros */
 #define wasm_u8x16_sub wasm_i8x16_sub
 #define wasm_u8x16_eq wasm_i8x16_eq
 #define wasm_u8x16_splat wasm_i8x16_splat
