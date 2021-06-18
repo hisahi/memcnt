@@ -47,7 +47,7 @@ INLINE size_t avx2_hsum_mm128_epu64(__m128i v) {
     return (size_t)_mm_cvtsi128_si64(_mm_add_epi64(v, hi));
 }
 
-INLINE uint64_t avx2_hsum_mm256_epu64(__m256i v) {
+INLINE size_t avx2_hsum_mm256_epu64(__m256i v) {
     __m128i lo = _mm256_castsi256_si128(v), hi = _mm256_extracti128_si256(v, 1);
     return avx2_hsum_mm128_epu64(_mm_add_epi64(lo, hi));
 }
