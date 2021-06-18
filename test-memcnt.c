@@ -213,9 +213,9 @@ int main(int argc, char *argv[]) {
     puts("Benchmark: measuring approximate CPU time in microseconds");
 #elif BENCHMARK == 2
 #if UNIT_CYCLES
-    puts("Benchmark: measuring (CPU) runtime in microseconds");
-#else
     puts("Benchmark: measuring (CPU) runtime in reference cycles");
+#else
+    puts("Benchmark: measuring (CPU) runtime in microseconds");
     clockFreq = getcpufreq();
 #endif
 #elif BENCHMARK == 3
