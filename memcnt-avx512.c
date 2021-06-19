@@ -104,7 +104,7 @@ MEMCNT_IMPL(avx512)(const void *ptr, int value, size_t num) {
 
         totals = _mm512_add_epi64(totals,
             _mm512_sad_epu8(sums[0], _mm512_setzero_si512()));
-        c += _mm512_reduce_add_epi64(totals);
+        c += (size_t)_mm512_reduce_add_epi64(totals);
         p = (const unsigned char *)wp;
     }
     while (num--)

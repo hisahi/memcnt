@@ -42,23 +42,14 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define UNROLL 4
 #endif
 
-INLINE unsigned avx2_hsum_mm256_epi32(__m256i v) {
-    __m128i lo = _mm256_castsi256_si128(v), hi = _mm256_extracti128_si256(v, 1),
-            hs, ls;
-    lo = _mm_add_epi32(lo, hi);
-    hs = _mm_add_epi32(lo, _mm_unpackhi_epi64(lo, lo));
-    ls = _mm_add_epi32(hs, _mm_shuffle_epi32(hs, 0xb1));
-    return (unsigned)_mm_cvtsi128_si32(ls);
+INLINE size_t avx2_hsum_mm128_epu64(__m128i v) {
+    __m128i hi = _mm_shuffle_epi32(v, 78);
+    return (size_t)_mm_cvtsi128_si64(_mm_add_epi64(v, hi));
 }
 
-INLINE unsigned avx2_hsum_mm256_epu8(__m256i v) {
+INLINE size_t avx2_hsum_mm256_epu64(__m256i v) {
     __m128i lo = _mm256_castsi256_si128(v), hi = _mm256_extracti128_si256(v, 1);
-    __m256i w0 = _mm256_cvtepu8_epi32(lo),
-            w1 = _mm256_cvtepu8_epi32(_mm_shuffle_epi32(lo, 0xee)),
-            w2 = _mm256_cvtepu8_epi32(hi),
-            w3 = _mm256_cvtepu8_epi32(_mm_shuffle_epi32(hi, 0xee));
-    return avx2_hsum_mm256_epi32(
-        _mm256_add_epi32(_mm256_add_epi32(w0, w1), _mm256_add_epi32(w2, w3)));
+    return avx2_hsum_mm128_epu64(_mm_add_epi64(lo, hi));
 }
 
 MEMCNT_IMPL(avx2)(const void *ptr, int value, size_t num) {
@@ -67,16 +58,17 @@ MEMCNT_IMPL(avx2)(const void *ptr, int value, size_t num) {
 
     if (num >= 64) {
         int k;
-        __m256i cmp = _mm256_set1_epi8((char)v), sums[UNROLL];
+        __m256i cmp = _mm256_set1_epi8((char)v), sums[UNROLL],
+                totals = _mm256_setzero_si256();
         uint8_t j = 1;
         const __m256i *wp;
         while (NOT_ALIGNED(p, 0x20))
             --num, c += *p++ == v;
         wp = (const __m256i *)p;
-        for (k = 0; k < UNROLL; ++k)
-            sums[k] = _mm256_setzero_si256();
 
 #if UNROLL > 1
+        for (k = 0; k < UNROLL; ++k)
+            sums[k] = _mm256_setzero_si256();
         while (num >= 0x20 * UNROLL) {
             __m256i tmp[UNROLL];
             num -= 0x20 * UNROLL;
@@ -88,7 +80,9 @@ MEMCNT_IMPL(avx2)(const void *ptr, int value, size_t num) {
 
             if (++j == 0) {
                 for (k = 0; k < UNROLL; ++k)
-                    c += avx2_hsum_mm256_epu8(sums[k]);
+                    totals = _mm256_add_epi64(
+                        totals,
+                        _mm256_sad_epu8(sums[k], _mm256_setzero_si256()));
                 for (k = 0; k < UNROLL; ++k)
                     sums[k] = _mm256_setzero_si256();
                 j = 1;
@@ -96,9 +90,11 @@ MEMCNT_IMPL(avx2)(const void *ptr, int value, size_t num) {
         }
 
         for (k = 0; k < UNROLL; ++k)
-            c += avx2_hsum_mm256_epu8(sums[k]);
-        sums[0] = _mm256_setzero_si256();
+            totals = _mm256_add_epi64(
+                totals, _mm256_sad_epu8(sums[k], _mm256_setzero_si256()));
+        j = 1;
 #endif
+        sums[0] = _mm256_setzero_si256();
 
         while (num >= 0x20) {
             __m256i tmp;
@@ -107,13 +103,16 @@ MEMCNT_IMPL(avx2)(const void *ptr, int value, size_t num) {
             sums[0] = _mm256_sub_epi8(sums[0], _mm256_cmpeq_epi8(cmp, tmp));
 
             if (++j == 0) {
-                c += avx2_hsum_mm256_epu8(sums[0]);
+                totals = _mm256_add_epi64(
+                    totals, _mm256_sad_epu8(sums[0], _mm256_setzero_si256()));
                 sums[0] = _mm256_setzero_si256();
                 j = 1;
             }
         }
 
-        c += avx2_hsum_mm256_epu8(sums[0]);
+        totals = _mm256_add_epi64(
+            totals, _mm256_sad_epu8(sums[0], _mm256_setzero_si256()));
+        c += avx2_hsum_mm256_epu64(totals);
         p = (const unsigned char *)wp;
     }
     while (num--)
