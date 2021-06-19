@@ -122,6 +122,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define MEMCNT_CHECK_avx2 __AVX2__
 #define MEMCNT_CHECK_avx512 __AVX512BW__
 #define MEMCNT_CHECK_neon __ARM_NEON
+#define MEMCNT_CHECK_msa __mips_msa
 
 #define MEMCNT_TARGET_default "default"
 #define MEMCNT_TARGET_sse2 "sse2"
@@ -189,6 +190,12 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 #endif
 
+/* MIPS MSA */
+#if MEMCNT_COMPILE_FOR(msa)
+#include "memcnt-msa.c"
+#ifndef MEMCNT_PICKED
+#define MEMCNT_PICKED MEMCNT_NAME_RAW(msa)
+#endif
 #endif
 
 /* =============================
