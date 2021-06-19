@@ -213,9 +213,9 @@ int main(int argc, char *argv[]) {
     puts("Benchmark: measuring approximate CPU time in microseconds");
 #elif BENCHMARK == 2
 #if UNIT_CYCLES
-    puts("Benchmark: measuring (CPU) runtime in microseconds");
-#else
     puts("Benchmark: measuring (CPU) runtime in reference cycles");
+#else
+    puts("Benchmark: measuring (CPU) runtime in microseconds");
     clockFreq = getcpufreq();
 #endif
 #elif BENCHMARK == 3
@@ -377,7 +377,7 @@ int main(int argc, char *argv[]) {
                     unsigned long long interval =
                         (testEnd - testStart) * 1000000ULL / clockFreq;
                     printf("OK     | %12llu us | ", interval);
-                    if (arraySize > 10)
+                    if (arraySize > 10 && interval > 0)
                         printf("%6.2f MB/s_CPU\n",
                                arraySize / (double)interval);
                     else

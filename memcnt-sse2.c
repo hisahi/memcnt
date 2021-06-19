@@ -38,9 +38,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <emmintrin.h>
 #include <stdint.h>
 
-INLINE unsigned sse2_hsum_mm128_epu8(__m128i v) {
-    __m128i vs = _mm_sad_epu8(v, _mm_setzero_si128());
-    return _mm_cvtsi128_si32(vs) + _mm_extract_epi16(vs, 4);
+INLINE size_t sse2_hsum_mm128_epu64(__m128i v) {
+    __m128i hi = _mm_shuffle_epi32(v, 78);
+    return (size_t)_mm_cvtsi128_si64(_mm_add_epi64(v, hi));
 }
 
 MEMCNT_IMPL(sse2)(const void *ptr, int value, size_t num) {
@@ -48,7 +48,8 @@ MEMCNT_IMPL(sse2)(const void *ptr, int value, size_t num) {
     size_t c = 0;
 
     if (num >= 32) {
-        __m128i cmp = _mm_set1_epi8((char)v), sums = _mm_setzero_si128();
+        __m128i cmp = _mm_set1_epi8((char)v), sums = _mm_setzero_si128(),
+                totals = _mm_setzero_si128();
         uint8_t j = 1;
         const __m128i *wp;
         while (NOT_ALIGNED(p, 0x10))
@@ -60,13 +61,15 @@ MEMCNT_IMPL(sse2)(const void *ptr, int value, size_t num) {
             sums = _mm_sub_epi8(sums, _mm_cmpeq_epi8(cmp, *wp++));
 
             if (++j == 0) {
-                c += sse2_hsum_mm128_epu8(sums);
+                totals = _mm_add_epi64(totals,
+                                       _mm_sad_epu8(sums, _mm_setzero_si128()));
                 sums = _mm_setzero_si128();
                 j = 1;
             }
         }
 
-        c += sse2_hsum_mm128_epu8(sums);
+        totals = _mm_add_epi64(totals, _mm_sad_epu8(sums, _mm_setzero_si128()));
+        c += sse2_hsum_mm128_epu64(totals);
         p = (const unsigned char *)wp;
     }
     while (num--)
