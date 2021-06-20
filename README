@@ -8,8 +8,8 @@ which returns the number of bytes (characters) equal to c (converted to an
 unsigned char) in the initial n characters in an array pointed to by s. The
 values in the array will be interpreted as unsigned chars and compared to c.
 
-The function is undefined if s is a null pointer or if n is larger than the
-number of unsigned chars in the array pointed to by s.
+The function is undefined if s is a null pointer and n is non-zero, or if n
+is larger than the number of unsigned chars in the array pointed to by s.
 
 The type size_t is as defined by <stddef.h>.
 
@@ -27,6 +27,8 @@ A correct memcnt implementation is:
 Any implementation of memcnt shall return the same value as the above function
 with the same parameters, unless the function is undefined due to one or more
 of the aforementioned conditions.
+
+memcnt shall return zero if n is zero regardless of the values of s and c.
 
 This repository contains implementations of memcnt, including optimized
 implementations for various architectures. See LICENSE for the license of these

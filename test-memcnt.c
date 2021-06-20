@@ -85,8 +85,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #define CHAR_COUNT (1 << CHAR_BIT)
 
-#if defined(__i386__) || defined(__amd64__) || defined(_M_IX86) ||             \
-    defined(_M_X64)
+#if (defined(__i386__) || defined(__amd64__) || defined(_M_IX86) ||            \
+    defined(_M_X64)) && (defined(__GNUC__) ||                                  \
+    defined(__INTEL_COMPILER) || defined(_MSC_VER))
 #ifdef _MSC_VER
 #include <intrin.h>
 #else
@@ -119,6 +120,7 @@ long long getcpufreq(void) {
 #define BM2_OK 1
 #define BM2_METHOD "ARM cntvct_el0"
 #else
+typedef int cputime_t;
 #define BM2_OK 0
 #define BM2_METHOD "(none)"
 cputime_t getcputime(void) { return 0; }
@@ -262,7 +264,13 @@ int main(int argc, char *argv[]) {
     maxTryCount = benchmark ? 6 : CHAR_COUNT;
     maxArraySize = benchmark ? MAX_ARRAY_SIZE : TEST_ARRAY_SIZE;
 #if MEMCNT_C
+#if MEMCNT_DYNAMIC
+    puts("Testing implementation resolved by dynamic dispatch");
+    (void)memcnt(NULL, 0, 0);
+    printf("    --> '%s'\n", memcnt_impl_dname_);
+#else
     printf("Testing implementation '%s'\n", memcnt_impl_name_);
+#endif
 #else
     puts("Testing manually linked implementation");
 #endif
@@ -313,10 +321,10 @@ int main(int argc, char *argv[]) {
     rng_seed = rand() ^ (rand() << 11) ^ (rand() << 23);
 
     if (!benchmark) {
+        puts("Running simple sanity tests");
         arraySize = TEST_ARRAY_SIZE;
         memset(buf, UCHAR_MAX, arraySize);
         testCount = memcnt(buf, UCHAR_MAX, arraySize);
-        puts("Running simple sanity tests");
         if (testCount != arraySize) {
             printf(
                 "Simple test failed! memcnt should have returned %zu for an\n"
@@ -330,6 +338,15 @@ int main(int argc, char *argv[]) {
             printf(
                 "Simple test failed! memcnt should have returned %zu for an\n"
                 "array filled with some other value, but it returned %zu.\n"
+                "Go fix it!\n",
+                (size_t)0, testCount);
+            return 1;
+        }
+        testCount = memcnt(NULL, 0, 0);
+        if (testCount != 0) {
+            printf(
+                "Simple test failed! memcnt should have returned %zu for a\n"
+                "NULL array with n=0, but it returned %zu.\n"
                 "Go fix it!\n",
                 (size_t)0, testCount);
             return 1;
