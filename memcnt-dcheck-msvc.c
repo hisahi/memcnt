@@ -70,7 +70,7 @@ INLINE int memcnt_dcheck_msvc_sse2_(void) {
     return WindowsVersionCheck(5, 1, 0, 0) &&
             IsProcessorFeaturePresent(PF_XMMI64_INSTRUCTIONS_AVAILABLE);
 }
-#define MEMCNT_DCHECK_sse2 memcnt_dcheck_msvc_sse2_
+#define MEMCNT_DCHECK_sse2 memcnt_dcheck_msvc_sse2_()
 
 #else
 INLINE int memcnt_dcheck_msvc_sse2_(void) {
@@ -99,7 +99,7 @@ INLINE int memcnt_dcheck_msvc_avx2_(void) {
     return 0;
 #endif
 }
-#define MEMCNT_DCHECK_avx2 memcnt_dcheck_msvc_avx2_
+#define MEMCNT_DCHECK_avx2 memcnt_dcheck_msvc_avx2_()
 
 INLINE int memcnt_dcheck_msvc_avx512_(void) {
 #if _M_AMD64
@@ -113,7 +113,7 @@ INLINE int memcnt_dcheck_msvc_avx512_(void) {
     return 0;
 #endif
 }
-#define MEMCNT_DCHECK_avx512 memcnt_dcheck_msvc_avx512_
+#define MEMCNT_DCHECK_avx512 memcnt_dcheck_msvc_avx512_()
 
 #endif
 
@@ -124,7 +124,7 @@ INLINE int memcnt_dcheck_msvc_neon_(void) {
     return IsProcessorFeaturePresent(PF_ARM_V8_INSTRUCTIONS_AVAILABLE);
 }
 
-#define MEMCNT_DCHECK_neon memcnt_dcheck_msvc_neon_
+#define MEMCNT_DCHECK_neon memcnt_dcheck_msvc_neon_()
 #else
 #define MEMCNT_DCHECK_neon 0
 #endif

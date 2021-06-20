@@ -267,7 +267,7 @@ int main(int argc, char *argv[]) {
 #if MEMCNT_DYNAMIC
     puts("Testing implementation resolved by dynamic dispatch");
     (void)memcnt(NULL, 0, 0);
-    printf("    --> '%s'\n", memcnt_impl_dname_);
+    printf("    --> '%s'\n", memcnt_impl_name_);
 #else
     printf("Testing implementation '%s'\n", memcnt_impl_name_);
 #endif

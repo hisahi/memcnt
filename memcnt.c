@@ -163,13 +163,14 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #if MEMCNT_CAN_MULTIARCH
 #define MEMCNT_MULTIARCH 1
-#define MEMCNT_COMPILE_FOR(impl)                                               \
-    (MEMCNT_CHECK_##impl) && (!(MEMCNT_NO_IMPL_##impl)) &&                     \
-        (MEMCNT_DYNAMIC || (!(MEMCNT_PICKED)))
+#define MEMCNT_COMPILE_FOR(arch, impl)                                         \
+    (MEMCNT_ARCH_##arch) && (MEMCNT_CHECK_##impl) &&                           \
+        (!(MEMCNT_NO_IMPL_##impl)) && (MEMCNT_DYNAMIC || (!(MEMCNT_PICKED)))
 #else
 #define MEMCNT_MULTIARCH 0
-#define MEMCNT_COMPILE_FOR(arch)                                               \
-    (MEMCNT_CHECK_##impl) && (!(MEMCNT_NO_IMPL_##impl)) && (!(MEMCNT_PICKED))
+#define MEMCNT_COMPILE_FOR(arch, impl)                                         \
+    (MEMCNT_ARCH_##arch) && (MEMCNT_CHECK_##impl) &&                           \
+        (!(MEMCNT_NO_IMPL_##impl)) && !(MEMCNT_PICKED)
 #endif
 
 #define MEMCNT_TRAMPOLINE MEMCNT_MULTIARCH && !MEMCNT_DYNAMIC
@@ -199,7 +200,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     MEMCNT_PICKED to themselves if not already defined */
 
 /* Intel AVX-512(BW) */
-#if MEMCNT_ARCH_X86 && MEMCNT_COMPILE_FOR(avx512)
+#if MEMCNT_COMPILE_FOR(X86, avx512)
 #include "memcnt-avx512.c"
 #define MEMCNT_COMPILED_avx512 1
 #ifndef MEMCNT_PICKED
@@ -208,7 +209,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 
 /* Intel AVX2 */
-#if MEMCNT_ARCH_X86 && MEMCNT_COMPILE_FOR(avx2)
+#if MEMCNT_COMPILE_FOR(X86, avx2)
 #include "memcnt-avx2.c"
 #define MEMCNT_COMPILED_avx2 1
 #ifndef MEMCNT_PICKED
@@ -217,7 +218,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 
 /* Intel SSE2 */
-#if MEMCNT_ARCH_X86 && MEMCNT_COMPILE_FOR(sse2)
+#if MEMCNT_COMPILE_FOR(X86, sse2)
 #include "memcnt-sse2.c"
 #define MEMCNT_COMPILED_sse2 1
 #ifndef MEMCNT_PICKED
@@ -226,7 +227,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 
 /* ARM Neon */
-#if MEMCNT_ARCH_ARM && MEMCNT_COMPILE_FOR(neon)
+#if MEMCNT_COMPILE_FOR(ARM, neon)
 #include "memcnt-neon.c"
 #define MEMCNT_COMPILED_neon 1
 #ifndef MEMCNT_PICKED
@@ -235,7 +236,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 
 /* WebAssembly SIMD */
-#if MEMCNT_ARCH_WASM && MEMCNT_COMPILE_FOR(wasm_simd)
+#if MEMCNT_COMPILE_FOR(WASM, wasm_simd)
 #include "memcnt-wasm-simd.c"
 #define MEMCNT_COMPILED_wasm_simd 1
 #ifndef MEMCNT_PICKED
@@ -312,18 +313,19 @@ size_t memcnt(const void *s, int c, size_t n) { return MEMCNT_PICKED(s, c, n); }
 typedef size_t (*memcnt_implptr_t)(const void *, int, size_t);
 
 size_t memcnt_firstrun_(const void *s, int c, size_t n);
-static memcnt_implptr_t memcnt_impl_ = &memcnt_firstrun_;
+static memcnt_implptr_t memcnt_impl_;
 
 #if MEMCNT_DEBUG
-const char *memcnt_impl_dname_;
+const char *memcnt_impl_name_;
 char memcnt_impl_dbuf_[256];
 
-#include <stdio.h>
-
 memcnt_implptr_t memcnt_impl_choose_(memcnt_implptr_t fp, const char *s) {
-    memset(memcnt_impl_dbuf_, 0, sizeof(memcnt_impl_dbuf_));
-    strncpy(memcnt_impl_dbuf_, s, sizeof(memcnt_impl_dbuf_) - 1);
-    memcnt_impl_dname_ = memcnt_impl_dbuf_;
+    char *d = memcnt_impl_dbuf_,
+         *e = memcnt_impl_dbuf_ + sizeof(memcnt_impl_dbuf_) - 1;
+    while (d < e && *s)
+        *d++ = *s++;
+    *d = 0;
+    memcnt_impl_name_ = memcnt_impl_dbuf_;
     return fp;
 }
 
@@ -370,9 +372,14 @@ size_t memcnt_firstrun_(const void *s, int c, size_t n) {
     return (*memcnt_impl_)(s, c, n);
 }
 
+static memcnt_implptr_t memcnt_impl_ = &memcnt_firstrun_;
+
 size_t memcnt(const void *s, int c, size_t n) {
     return (*memcnt_impl_)(s, c, n);
 }
+#else
+#undef MEMCNT_DYNAMIC
+#define MEMCNT_DYNAMIC 0
 #endif
 
 /* debug info */
@@ -380,14 +387,13 @@ size_t memcnt(const void *s, int c, size_t n) {
 /* name of "best" implementation compiled in */
 const char *memcnt_impl_name_ =
 #if MEMCNT_DYNAMIC
-    "(dynamic dispatcher)"
+    "(dynamic dispatcher...)"
 #elif defined(MEMCNT_PICKED)
     STRINGIFYVAL(MEMCNT_PICKED)
 #else
     STRINGIFYVAL(MEMCNT_NAME(default))
 #endif
     ;
-const char *memcnt_impl_dname_ = "(unknown)";
 #endif
 
 #endif

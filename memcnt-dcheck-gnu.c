@@ -49,7 +49,7 @@ INLINE int memcnt_dcheck_gnu_sse2_(void) {
     }
     return __builtin_cpu_supports("sse2");
 }
-#define MEMCNT_DCHECK_sse2 memcnt_dcheck_gnu_sse2_
+#define MEMCNT_DCHECK_sse2 memcnt_dcheck_gnu_sse2_()
 
 INLINE int memcnt_dcheck_gnu_avx2_(void) {
     if (!called_init_) {
@@ -58,7 +58,7 @@ INLINE int memcnt_dcheck_gnu_avx2_(void) {
     }
     return __builtin_cpu_supports("avx2");
 }
-#define MEMCNT_DCHECK_avx2 memcnt_dcheck_gnu_avx2_
+#define MEMCNT_DCHECK_avx2 memcnt_dcheck_gnu_avx2_()
 
 INLINE int memcnt_dcheck_gnu_avx512_(void) {
     if (!called_init_) {
@@ -67,7 +67,7 @@ INLINE int memcnt_dcheck_gnu_avx512_(void) {
     }
     return __builtin_cpu_supports("avx512bw");
 }
-#define MEMCNT_DCHECK_avx512 memcnt_dcheck_gnu_avx512_
+#define MEMCNT_DCHECK_avx512 memcnt_dcheck_gnu_avx512_()
 
 #endif
 
@@ -111,15 +111,16 @@ INLINE int memcnt_dcheck_gnu_neon_(void) {
     return MEMCNT_CHECK_neon;
 #endif
 }
-#define MEMCNT_DCHECK_neon memcnt_dcheck_gnu_neon_
+#define MEMCNT_DCHECK_neon memcnt_dcheck_gnu_neon_()
 
 #endif
 
 #if MEMCNT_ARCH_WASM
 INLINE int memcnt_dcheck_gnu_wasm_simd_(void) {
+    /* TODO */
     /* fall time on compile time check */
     return MEMCNT_CHECK_wasm_simd;
 }
-#define MEMCNT_DCHECK_wasm_simd memcnt_dcheck_gnu_wasm_simd_
+#define MEMCNT_DCHECK_wasm_simd memcnt_dcheck_gnu_wasm_simd_()
 
 #endif
