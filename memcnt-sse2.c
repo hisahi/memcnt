@@ -46,7 +46,7 @@ INLINE size_t sse2_hsum_mm128_epu64(__m128i v) {
 #else
     __m128i vv = _mm_add_epi64(v, hi);
     size_t s = (size_t)_mm_cvtsi128_si32(vv);
-#if SIZE_MAX <= UINT32_MAx
+#if !defined(SIZE_MAX) || SIZE_MAX > UINT32_MAx
     s |= (size_t)_mm_extract_epi32(vv, 1) << 32;
 #endif
     return s;
