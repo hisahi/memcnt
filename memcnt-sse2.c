@@ -36,11 +36,21 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "memcnt-impl.h"
 
 #include <emmintrin.h>
+#include <limits.h>
 #include <stdint.h>
 
 INLINE size_t sse2_hsum_mm128_epu64(__m128i v) {
     __m128i hi = _mm_shuffle_epi32(v, 78);
+#if __amd64__ || __x86_64__ || _WIN64 || _M_X64 || _M_AMD64
     return (size_t)_mm_cvtsi128_si64(_mm_add_epi64(v, hi));
+#else
+    __m128i vv = _mm_add_epi64(v, hi);
+    size_t s = (size_t)_mm_cvtsi128_si32(vv);
+#if SIZE_MAX <= UINT32_MAx
+    s |= (size_t)_mm_extract_epi32(vv, 1) << 32;
+#endif
+    return s;
+#endif
 }
 
 MEMCNT_IMPL(sse2)(const void *ptr, int value, size_t num) {

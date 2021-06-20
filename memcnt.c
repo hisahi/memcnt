@@ -72,18 +72,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
                             ignored if MEMCNT_COMPILE_ALL=1, but must be defined
                             for the implementation for arch A to be built */
 
-#if defined(UINTPTR_MAX)
-#define MEMCNT_CAN_MULTIARCH 1
-#else
-#define MEMCNT_CAN_MULTIARCH 0
-#endif
-
 #define MEMCNT_NAME_RAW(arch) memcnt_##arch
-#if MEMCNT_COMPILE_ALL
-#define MEMCNT_NAME(arch) MEMCNT_HEADER memcnt
-#else
-#define MEMCNT_NAME(arch) MEMCNT_HEADER MEMCNT_NAME_RAW(arch)
-#endif
 
 #if defined(__INTEL_COMPILER)
 
@@ -101,10 +90,15 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define MEMCNT_IMPL(arch) MEMCNT_NAME(arch)
 #define MEMCNT_DEFAULT MEMCNT_IMPL(default)
 
-#define MEMCNT_CHECK_sse2 _M_AMD64 || _M_X64 || _M_IX86_FP == 2
+#define MEMCNT_CHECK_sse2 (_M_IX86_FP == 2 || _M_AMD64 || _M_X64)
 #define MEMCNT_CHECK_avx2 __AVX2__
 #define MEMCNT_CHECK_avx512 __AVX512BW__
 #define MEMCNT_CHECK_neon __ARM_NEON
+
+#if _MSC_VER >= 1700
+#define MEMCNT_STDINT 1
+#include <stdint.h>
+#endif
 
 #elif defined(__GNUC__)
 
@@ -132,6 +126,23 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #endif
 
+#if MEMCNT_COMPILE_ALL
+#define MEMCNT_NAME(arch) MEMCNT_HEADER memcnt
+#else
+/* must match with MEMCNT_NAME_RAW */
+#define MEMCNT_NAME(arch) MEMCNT_HEADER memcnt_##arch
+#endif
+
+#ifndef MEMCNT_STDINT
+#define MEMCNT_STDINT MEMCNT_C99
+#endif
+
+#if defined(UINTPTR_MAX)
+#define MEMCNT_CAN_MULTIARCH 1
+#else
+#define MEMCNT_CAN_MULTIARCH 0
+#endif
+
 #if MEMCNT_CAN_MULTIARCH && defined(MEMCNT_IMPL)
 #define MEMCNT_MULTIARCH 1
 #define MEMCNT_COMPILE_FOR(arch)                                               \
@@ -156,7 +167,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
      optimized implementations
    ============================= */
 
-#if MEMCNT_C99 && !MEMCNT_NAIVE
+#if MEMCNT_CAN_MULTIARCH && MEMCNT_STDINT && !MEMCNT_NAIVE
 /* order from "most desirable" to "least desirable" within the same arch */
 
 /* Intel AVX-512(BW) */
@@ -238,7 +249,7 @@ typedef uint32_t memcnt_word_t;
 #define MEMCNT_WIDE 0
 #endif
 
-#if MEMCNT_WIDE
+#if MEMCNT_CAN_MULTIARCH && MEMCNT_WIDE
 #include "memcnt-wide.c"
 #ifndef MEMCNT_PICKED
 #define MEMCNT_PICKED MEMCNT_NAME_RAW(wide)

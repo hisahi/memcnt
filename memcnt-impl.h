@@ -53,6 +53,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
 #define INLINE static inline
 #define NOT_ALIGNED(p, m) ((uintptr_t)(p) & ((m)-1))
+#elif _MSC_VER >= 1700
+#define INLINE static
+#define NOT_ALIGNED(p, m) ((uintptr_t)(p) & ((m)-1))
 #else
 #define INLINE static
 #define NOT_ALIGNED(p, m) ((unsigned long)(p) & ((m)-1))
