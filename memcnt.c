@@ -61,7 +61,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
    using the dynamic dispatcher prevents inlining and increases code size
    (as every suitable implementation is compiled), but allows the fastest
    implementation to be optimized during runtime.
-   this feature is experimental! it will eventually be set to 1 by default.
+   this feature is experimental! it will eventually be set to 1 by default
+   on supported platforms.
    if you do not want dynamic dispatching, set it explicitly to 0! */
 #ifndef MEMCNT_DYNAMIC
 #define MEMCNT_DYNAMIC 0
@@ -315,9 +316,10 @@ typedef size_t (*memcnt_implptr_t)(const void *, int, size_t);
 size_t memcnt_firstrun_(const void *s, int c, size_t n);
 static memcnt_implptr_t memcnt_impl_;
 
+/* debug info. MEMCNT_DEBUG makes memcnt nonreentrant! */
 #if MEMCNT_DEBUG
 const char *memcnt_impl_name_;
-char memcnt_impl_dbuf_[256];
+static char memcnt_impl_dbuf_[256];
 
 memcnt_implptr_t memcnt_impl_choose_(memcnt_implptr_t fp, const char *s) {
     char *d = memcnt_impl_dbuf_,
@@ -382,7 +384,7 @@ size_t memcnt(const void *s, int c, size_t n) {
 #define MEMCNT_DYNAMIC 0
 #endif
 
-/* debug info */
+/* debug info. MEMCNT_DEBUG makes memcnt nonreentrant! */
 #if MEMCNT_DEBUG
 /* name of "best" implementation compiled in */
 const char *memcnt_impl_name_ =
