@@ -1,7 +1,7 @@
 /*
 
 memcnt -- C function for counting bytes equal to value in a buffer
-Copyright (c) 2021 Sampo Hippeläinen
+Copyright (c) 2021 Sampo Hippeläinen (hisahi)
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -31,34 +31,24 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 */
 
-#ifndef MEMCNT_IMPL_H
-#define MEMCNT_IMPL_H
+/* This is an alternative version of memcnt.h for systems that would need
+   to use memcnt-strict.c anyway. Do not use both memcnt.h and memcnt-strict.h
+   in the same project. */
 
-/* size_t */
-#include "stddef.h"
+#ifndef MEMCNT_H
+#define MEMCNT_H
 
-/* if this is not memcnt.c */
-#if !MEMCNT_C
-
-#if MEMCNT_NAMED
-#define MEMCNT_IMPL(arch) size_t memcnt_##arch
-#define MEMCNT_DEFAULT size_t memcnt_default
+#ifndef NODEF
+#include <stddef.h>
 #else
-#define MEMCNT_IMPL(arch) size_t memcnt
-#define MEMCNT_DEFAULT size_t memcnt
+#define size_t unsigned long
 #endif
 
-#endif
+/* Counts the number of bytes (characters) equal to c (converted to an
+   unsigned char) in the initial n characters in an array pointed to by s. The
+   values in the array will be interpreted as unsigned chars and compared to c.
+   Returns 0 if n is 0, undefined if s is NULL or n is greater than the number
+   of unsigned chars allocated in s. */
+size_t memcnt(const void *s, int c, size_t n);
 
-#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
-#define INLINE static inline
-#define NOT_ALIGNED(p, m) ((uintptr_t)(p) & ((m)-1))
-#elif _MSC_VER >= 1700
-#define INLINE static
-#define NOT_ALIGNED(p, m) ((uintptr_t)(p) & ((m)-1))
-#else
-#define INLINE static
-#define NOT_ALIGNED(p, m) ((unsigned long)(p) & ((m)-1))
-#endif
-
-#endif /* MEMCNT_IMPL_H */
+#endif /* MEMCNT_H */

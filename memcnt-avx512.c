@@ -69,41 +69,41 @@ MEMCNT_IMPL(avx512)(const void *ptr, int value, size_t num) {
             for (k = 0; k < UNROLL; ++k)
                 masks[k] = _mm512_cmpeq_epu8_mask(cmp, tmp[k]);
             for (k = 0; k < UNROLL; ++k)
-                sums[k] = _mm512_mask_add_epi8(sums[k], masks[k],
-                                                sums[k], ones);
+                sums[k] =
+                    _mm512_mask_add_epi8(sums[k], masks[k], sums[k], ones);
 
             if (++j == 0) {
                 for (k = 0; k < UNROLL; ++k)
-                    totals = _mm512_add_epi64(totals,
+                    totals = _mm512_add_epi64(
+                        totals,
                         _mm512_sad_epu8(sums[k], _mm512_setzero_si512()));
                 for (k = 0; k < UNROLL; ++k)
                     sums[k] = _mm512_setzero_si512();
                 j = 1;
             }
         }
-        
+
         for (k = 0; k < UNROLL; ++k)
-            totals = _mm512_add_epi64(totals,
-                _mm512_sad_epu8(sums[k], _mm512_setzero_si512()));
+            totals = _mm512_add_epi64(
+                totals, _mm512_sad_epu8(sums[k], _mm512_setzero_si512()));
         sums[0] = _mm512_setzero_si512();
 #endif
 
         while (num >= 0x40) {
             num -= 0x40;
-            sums[0] = _mm512_mask_add_epi8(sums[0],
-                                        _mm512_cmpeq_epu8_mask(cmp, *wp++),
-                                        sums[0], ones);
+            sums[0] = _mm512_mask_add_epi8(
+                sums[0], _mm512_cmpeq_epu8_mask(cmp, *wp++), sums[0], ones);
 
             if (++j == 0) {
-                totals = _mm512_add_epi64(totals,
-                    _mm512_sad_epu8(sums[0], _mm512_setzero_si512()));
+                totals = _mm512_add_epi64(
+                    totals, _mm512_sad_epu8(sums[0], _mm512_setzero_si512()));
                 sums[0] = _mm512_setzero_si512();
                 j = 1;
             }
         }
 
-        totals = _mm512_add_epi64(totals,
-            _mm512_sad_epu8(sums[0], _mm512_setzero_si512()));
+        totals = _mm512_add_epi64(
+            totals, _mm512_sad_epu8(sums[0], _mm512_setzero_si512()));
         c += (size_t)_mm512_reduce_add_epi64(totals);
         p = (const unsigned char *)wp;
     }

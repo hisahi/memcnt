@@ -54,8 +54,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 
 #ifdef KR
-size_t memcnt(ptr, value, num)
-CONST char *ptr;
+size_t memcnt(ptr, value, num) CONST char *ptr;
 int value;
 size_t num;
 {

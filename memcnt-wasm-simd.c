@@ -31,55 +31,59 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 */
 
-/* memcnt_sse2 (for Intel SSE2) */
+/* memcnt_wasm_simd (for WebAssembly SIMD) */
 
 #include "memcnt-impl.h"
 
-#include <emmintrin.h>
-#include <limits.h>
 #include <stdint.h>
+#include <wasm_simd128.h>
 
-INLINE size_t sse2_hsum_mm128_epu64(__m128i v) {
-    __m128i hi = _mm_shuffle_epi32(v, 78);
-#if __amd64__ || __x86_64__ || _WIN64 || _M_X64 || _M_AMD64
-    return (size_t)_mm_cvtsi128_si64(_mm_add_epi64(v, hi));
-#else
-    __m128i vv = _mm_add_epi64(v, hi);
-    size_t s = (size_t)_mm_cvtsi128_si32(vv);
-#if !defined(SIZE_MAX) || SIZE_MAX > UINT32_MAx
-    s |= (size_t)_mm_extract_epi32(vv, 1) << 32;
-#endif
-    return s;
-#endif
+#define wasm_u8x16_sub wasm_i8x16_sub
+#define wasm_u8x16_eq wasm_i8x16_eq
+#define wasm_u8x16_splat wasm_i8x16_splat
+#define wasm_u16x8_add wasm_i16x8_add
+#define wasm_u32x4_add wasm_i32x4_add
+#define wasm_u64x2_add wasm_i64x2_add
+
+/* not the fastest. anyone have better ideas? */
+INLINE unsigned long long wasm_simd_hsum_u8x16(__u8x16 v) {
+    __u16x8 vh = wasm_u16x8_extend_high_u8x16(v);
+    __u16x8 vl = wasm_u16x8_add(wasm_u16x8_extend_low_u8x16(v), vh);
+    __u32x4 wh = wasm_u32x4_extend_high_u16x8(vl);
+    __u32x4 wl = wasm_u32x4_add(wasm_u32x4_extend_low_u16x8(vl), wh);
+    __u64x2 qh = wasm_u64x2_extend_high_u32x4(wl);
+    __u64x2 ql = wasm_u64x2_add(wasm_u64x2_extend_low_u32x4(wl), qh);
+    return ql[0] + ql[1];
 }
 
-MEMCNT_IMPL(sse2)(const void *ptr, int value, size_t num) {
+INLINE __u8x16 wasm_simd_zero_u8x16(void) {
+    return (__u8x16)wasm_i64x2_const(0, 0);
+}
+
+MEMCNT_IMPL(wasm_simd)(const void *ptr, int value, size_t num) {
     const unsigned char *p = (unsigned char *)ptr, v = (unsigned char)value;
     size_t c = 0;
 
     if (num >= 32) {
-        __m128i cmp = _mm_set1_epi8((char)v), sums = _mm_setzero_si128(),
-                totals = _mm_setzero_si128();
+        __u8x16 cmp = wasm_u8x16_splat(v), sums = wasm_simd_zero_u8x16();
         uint8_t j = 1;
-        const __m128i *wp;
+        const __u8x16 *wp;
         while (NOT_ALIGNED(p, 0x10))
             --num, c += *p++ == v;
-        wp = (const __m128i *)p;
+        wp = (const __u8x16 *)p;
 
         while (num >= 0x10) {
             num -= 0x10;
-            sums = _mm_sub_epi8(sums, _mm_cmpeq_epi8(cmp, *wp++));
+            sums = wasm_u8x16_sub(sums, wasm_u8x16_eq(cmp, *wp++));
 
             if (++j == 0) {
-                totals = _mm_add_epi64(totals,
-                                       _mm_sad_epu8(sums, _mm_setzero_si128()));
-                sums = _mm_setzero_si128();
+                c += wasm_simd_hsum_u8x16(sums);
+                sums = wasm_simd_zero_u8x16();
                 j = 1;
             }
         }
 
-        totals = _mm_add_epi64(totals, _mm_sad_epu8(sums, _mm_setzero_si128()));
-        c += sse2_hsum_mm128_epu64(totals);
+        c += wasm_simd_hsum_u8x16(sums);
         p = (const unsigned char *)wp;
     }
     while (num--)
