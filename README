@@ -64,7 +64,7 @@ with no optimizations.
 test-memcnt.c is a test program for testing memcnt implementations and is not
 needed for use in other programs.
 
-If you want to build an universal binary (or a "fat binary"), the next
+If you want to build an universal binary (or a "fat binary"), the following
 information may prove useful for you.
 
 If MEMCNT_DYNAMIC=1 is defined for memcnt.c, a dynamic dispatcher is used for
@@ -86,12 +86,12 @@ The dynamic dispatcher should only be used if you are statically linking your
 program and want it to be a "universal" (or "fat") binary that works on a
 variety of CPUs of the same architecture. If you are statically linking for one
 architecture only, you don't need the dynamic dispatcher. The same applies if
-you want to build a dynamically linkable memcnt library -- you probably don't
-need your library binary to work on a variety of CPUs, but if you do, you SHOULD
-figure out a way to call memcnt_optimize() yourself when the library is
-loaded/linked (such as by using DllMain on Win32). Define MEMCNT_DYNALINK to 1
-if building a dynamic library to help with this. (Also, look into memcnt.h and
-how to define EXPORT if you want to build a dynamic library.)
+you want to build a dynamically linkable ("shared") memcnt library -- you
+probably don't need your library binary to work on a variety of CPUs, but if you
+do, you SHOULD figure out a way to call memcnt_optimize() yourself when the
+library is loaded/linked (such as by using DllMain on Win32). Define
+MEMCNT_DYNALINK to 1 if building a dynamic/shared library to help with this.
+(Also, look into memcnt.h and how to define PUBLIC.)
 
 memcnt_optimize may be safely called even if the dynamic dispatcher is not
 compiled in, but will do nothing in that case. Calling memcnt_optimize again
