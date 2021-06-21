@@ -61,5 +61,24 @@ If your tools do not support the above process, you can skip all of the above
 steps by using memcnt-strict.c. It is however only a standard implementation
 with no optimizations.
 
+If MEMCNT_DYNAMIC=1 is defined for memcnt.c, a dynamic dispatcher is used for
+memcnt if supported for your compiler. This allows compiling multiple
+implementations in the same binary and picking the fastest supported
+implementation during runtime. By default, the implementation picked during
+compile time is used, and that implementation may result in an error if
+executed on a platform that does not support the instruction set the
+implementation uses.
+
+With dynamic dispatching, you must call memcnt_optimize(), after which memcnt()
+will use the fastest implementation available on the platform. memcnt MUST NOT
+be called while memcnt_optimize is running, and memcnt_optimize likewise MUST
+not itself be called again while running (it is not reentrant nor concurrent).
+It is recommended to place a memcnt_optimize call as one of the first things
+to do in main(); it is not a very slow function.
+
+memcnt_optimize may be safely called even if the dynamic dispatcher is not
+compiled in, but will do nothing in that case. Calling memcnt_optimize again
+will likewise do nothing if it has already been run.
+
 test-memcnt.c is a test program for testing memcnt implementations and is not
 needed for use in other programs.

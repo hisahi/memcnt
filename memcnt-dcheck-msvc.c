@@ -59,16 +59,15 @@ INLINE int WindowsVersionCheck(int major, int minor, int spmajor, int spminor) {
     VER_SET_CONDITION(dwlConditionMask, VER_MINORVERSION, op);
     VER_SET_CONDITION(dwlConditionMask, VER_SERVICEPACKMAJOR, op);
     VER_SET_CONDITION(dwlConditionMask, VER_SERVICEPACKMINOR, op);
-    return VerifyVersionInfo(
-            &osvi, 
-            VER_MAJORVERSION | VER_MINORVERSION | 
-            VER_SERVICEPACKMAJOR | VER_SERVICEPACKMINOR,
-            dwlConditionMask);
+    return VerifyVersionInfo(&osvi,
+                             VER_MAJORVERSION | VER_MINORVERSION |
+                                 VER_SERVICEPACKMAJOR | VER_SERVICEPACKMINOR,
+                             dwlConditionMask);
 }
 
 INLINE int memcnt_dcheck_msvc_sse2_(void) {
     return WindowsVersionCheck(5, 1, 0, 0) &&
-            IsProcessorFeaturePresent(PF_XMMI64_INSTRUCTIONS_AVAILABLE);
+           IsProcessorFeaturePresent(PF_XMMI64_INSTRUCTIONS_AVAILABLE);
 }
 #define MEMCNT_DCHECK_sse2 memcnt_dcheck_msvc_sse2_()
 

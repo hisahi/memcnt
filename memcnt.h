@@ -38,4 +38,12 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 size_t memcnt(const void *s, int c, size_t n);
 
+/* if dynamic dispatching is compiled in, memcnt_optimize will automatically
+   choose the best implementation and make memcnt call it the next time around.
+   memcnt or memcnt_optimize MUST not be called while memcnt_optimize is
+   (already) running; doing so results in undefined behavior.
+
+   if the dynamic dispatcher is not used, memcnt_optimize does nothing. */
+void memcnt_optimize(void);
+
 #endif /* MEMCNT_H */

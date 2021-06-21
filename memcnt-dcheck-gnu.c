@@ -74,25 +74,25 @@ INLINE int memcnt_dcheck_gnu_avx512_(void) {
 #if MEMCNT_ARCH_ARM
 
 #if defined(__linux__)
-#include <sys/auxv.h>
 #include <asm/hwcap.h>
+#include <sys/auxv.h>
 INLINE int memcnt_dcheck_gnu_neon_vendor_(void) {
 #if defined(__aarch64__)
-    return 0 != (getauxval(AT_HWCAP) & HWCAP_ASIMD);
+    return !!(getauxval(AT_HWCAP) & HWCAP_ASIMD);
 #elif defined(__aarch32__)
-    return 0 != (getauxval(AT_HWCAP2) & HWCAP2_ASIMD);
+    return !!(getauxval(AT_HWCAP2) & HWCAP2_ASIMD);
 #else
-    return 0 != (getauxval(AT_HWCAP) & HWCAP_NEON);
+    return !!(getauxval(AT_HWCAP) & HWCAP_NEON);
 #endif
 }
 #define MEMCNT_DCHECK_NEON_VENDOR 1
 #elif defined(__ANDROID__)
 #include <cpu-features.h>
 INLINE int memcnt_dcheck_gnu_neon_vendor_(void) {
-    return (0 != (android_getCpuFamily() & ANDROID_CPU_FAMILY_ARM64)
-        && 0 != (android_getCpuFeatures() & ANDROID_CPU_ARM64_FEATURE_ASIMD))
-        || (0 != (android_getCpuFamily() & ANDROID_CPU_FAMILY_ARM)
-        && 0 != (android_getCpuFeatures() & ANDROID_CPU_ARM_FEATURE_NEON));
+    return (!!(android_getCpuFamily() & ANDROID_CPU_FAMILY_ARM64) &&
+            !!(android_getCpuFeatures() & ANDROID_CPU_ARM64_FEATURE_ASIMD)) ||
+           (!!(android_getCpuFamily() & ANDROID_CPU_FAMILY_ARM) &&
+            !!(android_getCpuFeatures() & ANDROID_CPU_ARM_FEATURE_NEON));
 }
 #define MEMCNT_DCHECK_NEON_VENDOR 1
 #elif defined(_WIN64)

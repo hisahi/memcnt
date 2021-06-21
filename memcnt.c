@@ -51,19 +51,23 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define MEMCNT_C99 1
 #endif
 
+/* C11? */
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+#define MEMCNT_C11 1
+#endif
+
 #define MEMCNT_C 1
 #include "memcnt-impl.h"
 
 #define STRINGIFY(x) #x
 #define STRINGIFYVAL(x) STRINGIFY(x)
 
-/* use dynamic dispatcher. the target platform must support function pointers.
-   using the dynamic dispatcher prevents inlining and increases code size
-   (as every suitable implementation is compiled), but allows the fastest
+/* (try to) use the dynamic dispatcher. the target must support function
+   pointers. using the dynamic dispatcher prevents inlining and increases code
+   size (as every suitable implementation is compiled), but allows the fastest
    implementation to be optimized during runtime.
-   this feature is experimental! it will eventually be set to 1 by default
-   on supported platforms.
-   if you do not want dynamic dispatching, set it explicitly to 0! */
+   in order to pick that implementation, you must call memcnt_optimize(),
+   and while that function is running, memcnt calls are NOT allowed. */
 #ifndef MEMCNT_DYNAMIC
 #define MEMCNT_DYNAMIC 0
 #endif
@@ -78,6 +82,12 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
                         compiler-implementation table
    2. add the include to the implementation list
    3. add it to the dynamic dispatcher
+*/
+
+/*
+   to add support for a new compiler:
+   1. add a new section for the compiler in the compiler-implementation table
+   2. implement memcnt_only_true_on_first_ and memcnt_atomic_set_
 */
 
 /* Compiler-Implementation Table
@@ -313,7 +323,6 @@ size_t memcnt(const void *s, int c, size_t n) { return MEMCNT_PICKED(s, c, n); }
 /* size_t memcnt(const void *s, int c, size_t n); */
 typedef size_t (*memcnt_implptr_t)(const void *, int, size_t);
 
-size_t memcnt_firstrun_(const void *s, int c, size_t n);
 static memcnt_implptr_t memcnt_impl_;
 
 /* debug info. MEMCNT_DEBUG makes memcnt nonreentrant! */
@@ -338,10 +347,15 @@ memcnt_implptr_t memcnt_impl_choose_(memcnt_implptr_t fp, const char *s) {
 #endif
 
 #define MEMCNT_DYNAMIC_CANDIDATE(implname)                                     \
-    else if (MEMCNT_DCHECK_##implname) memcnt_impl_ =                          \
-        MEMCNT_DYNAMIC_CHOOSE(implname);
+    else if (MEMCNT_DCHECK_##implname) p = MEMCNT_DYNAMIC_CHOOSE(implname);
 
-size_t memcnt_firstrun_(const void *s, int c, size_t n) {
+static int memcnt_optimized = 0;
+
+void memcnt_optimize(void) {
+    memcnt_implptr_t p;
+    if (memcnt_optimized)
+        return;
+    memcnt_optimized = 1;
     if (0)
         ;
 
@@ -367,14 +381,18 @@ size_t memcnt_firstrun_(const void *s, int c, size_t n) {
 
     else
 #if MEMCNT_WIDE
-        memcnt_impl_ = MEMCNT_DYNAMIC_CHOOSE(wide);
+        p = MEMCNT_DYNAMIC_CHOOSE(wide);
 #else
-        memcnt_impl_ = MEMCNT_DYNAMIC_CHOOSE(default);
+        p = MEMCNT_DYNAMIC_CHOOSE(default);
 #endif
-    return (*memcnt_impl_)(s, c, n);
+    memcnt_impl_ = p;
 }
 
-static memcnt_implptr_t memcnt_impl_ = &memcnt_firstrun_;
+#ifdef MEMCNT_PICKED
+static memcnt_implptr_t memcnt_impl_ = &MEMCNT_PICKED;
+#else
+static memcnt_implptr_t memcnt_impl_ = &MEMCNT_NAME(default);
+#endif
 
 size_t memcnt(const void *s, int c, size_t n) {
     return (*memcnt_impl_)(s, c, n);
@@ -382,6 +400,7 @@ size_t memcnt(const void *s, int c, size_t n) {
 #else
 #undef MEMCNT_DYNAMIC
 #define MEMCNT_DYNAMIC 0
+void memcnt_optimize(void) {}
 #endif
 
 /* debug info. MEMCNT_DEBUG makes memcnt nonreentrant! */
@@ -389,8 +408,6 @@ size_t memcnt(const void *s, int c, size_t n) {
 /* name of "best" implementation compiled in */
 const char *memcnt_impl_name_ =
 #if MEMCNT_DYNAMIC
-    "(dynamic dispatcher...)"
-#elif defined(MEMCNT_PICKED)
     STRINGIFYVAL(MEMCNT_PICKED)
 #else
     STRINGIFYVAL(MEMCNT_NAME(default))

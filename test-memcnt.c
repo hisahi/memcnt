@@ -86,8 +86,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define CHAR_COUNT (1 << CHAR_BIT)
 
 #if (defined(__i386__) || defined(__amd64__) || defined(_M_IX86) ||            \
-    defined(_M_X64)) && (defined(__GNUC__) ||                                  \
-    defined(__INTEL_COMPILER) || defined(_MSC_VER))
+     defined(_M_X64)) &&                                                       \
+    (defined(__GNUC__) || defined(__INTEL_COMPILER) || defined(_MSC_VER))
 #ifdef _MSC_VER
 #include <intrin.h>
 #else
@@ -153,7 +153,7 @@ static inline unsigned long long timegetus(const BM3_TYPE *r) {
 #define BM3_TYPE uint64_t
 #define BM3_OK 1
 #define BM3_METHOD "POSIX/Apple clock_gettime_nsec_np(CLOCK_UPTIME_RAW)"
-static inline void timeinit() { }
+static inline void timeinit() {}
 static inline void timecapture(BM3_TYPE *r) {
     *r = clock_gettime_nsec_np(CLOCK_UPTIME_RAW);
 }
@@ -167,7 +167,7 @@ static inline unsigned long long timegetus(const BM3_TYPE *r) {
 #define BM3_TYPE struct timespec
 #define BM3_OK 1
 #define BM3_METHOD "POSIX clock_gettime(CLOCK_MONOTONIC)"
-static inline void timeinit() { }
+static inline void timeinit() {}
 static inline void timecapture(BM3_TYPE *r) {
     clock_gettime(CLOCK_MONOTONIC, r);
 }
@@ -189,16 +189,14 @@ static inline unsigned long long timegetus(const BM3_TYPE *r) {
 #define BM3_TYPE int
 #define BM3_OK 0
 #define BM3_METHOD "(none)"
-static inline void timeinit() { }
+static inline void timeinit() {}
 static inline void timecapture(BM3_TYPE *r) { (void)r; }
 static inline void timediff(BM3_TYPE *r, const BM3_TYPE *a, const BM3_TYPE *b) {
     (void)r;
     (void)a;
     (void)b;
 }
-static inline unsigned long long timegetus(const BM3_TYPE *r) {
-    return 0;
-}
+static inline unsigned long long timegetus(const BM3_TYPE *r) { return 0; }
 #endif
 
 #define TEST_ARRAY_SIZE 800000
@@ -227,7 +225,7 @@ void fill_array(int arraySize, int tryCount, int *tries, int *counts,
     /* fill array */
     if (arraySize > MAX_ARRAY_SIZE) {
         unsigned char j = (unsigned char)rng();
-        unsigned char k = (unsigned char)rng() | 1; 
+        unsigned char k = (unsigned char)rng() | 1;
         for (i = 0; i < arraySize; ++i)
             ++counts[(unsigned char)(buf[i] = (j += k))];
     } else
@@ -266,7 +264,7 @@ int main(int argc, char *argv[]) {
 #if MEMCNT_C
 #if MEMCNT_DYNAMIC
     puts("Testing implementation resolved by dynamic dispatch");
-    (void)memcnt(NULL, 0, 0);
+    memcnt_optimize();
     printf("    --> '%s'\n", memcnt_impl_name_);
 #else
     printf("Testing implementation '%s'\n", memcnt_impl_name_);
@@ -344,11 +342,10 @@ int main(int argc, char *argv[]) {
         }
         testCount = memcnt(NULL, 0, 0);
         if (testCount != 0) {
-            printf(
-                "Simple test failed! memcnt should have returned %zu for a\n"
-                "NULL array with n=0, but it returned %zu.\n"
-                "Go fix it!\n",
-                (size_t)0, testCount);
+            printf("Simple test failed! memcnt should have returned %zu for a\n"
+                   "NULL array with n=0, but it returned %zu.\n"
+                   "Go fix it!\n",
+                   (size_t)0, testCount);
             return 1;
         }
         arraySize = 9000;
