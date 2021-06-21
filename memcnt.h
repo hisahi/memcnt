@@ -36,6 +36,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /* define MEMCNT_DYNALINK if you are *building* a dynamic link library.
    define MEMCNT_IMPORT if you are *using* a dynamic link library. */
+#ifndef PUBLIC
 #if MEMCNT_DYNALINK
 #if defined(__GNUC__)
 #define PUBLIC __attribute__((visibility("default")))
@@ -53,6 +54,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 #else
 #define PUBLIC
+#endif
 #endif
 
 #ifdef __cplusplus
