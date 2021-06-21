@@ -38,8 +38,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "memcnt.h"
 
 /* try to test identifier limits */
+#undef MEMCNT_TMP_REALLYLONGNAME2
 #define MEMCNT_TMP_REALLYLONGNAME 1
-#if !defined(MEMCNT_TMP_REALLYLONGNAME) || defined(MEMCNT_TMP_REALLYLONGNAME2)
+#if STRICT || !defined(MEMCNT_TMP_REALLYLONGNAME) ||                           \
+    defined(MEMCNT_TMP_REALLYLONGNAME2)
 #include "memcnt-strict.c"
 #else
 #undef MEMCNT_TMP_REALLYLONGNAME
@@ -111,11 +113,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define MEMCNT_CHECK_avx2 __AVX2__
 #define MEMCNT_CHECK_avx512 __AVX512BW__
 
+#if MEMCNT_DYNAMIC
 #include <immintrin.h>
 
 #define MEMCNT_DCHECK_sse2 _may_i_use_cpu_feature(_FEATURE_SSE2)
 #define MEMCNT_DCHECK_avx2 _may_i_use_cpu_feature(_FEATURE_AVX2)
 #define MEMCNT_DCHECK_avx512 _may_i_use_cpu_feature(_FEATURE_AVX512BW)
+#endif
 
 #elif defined(_MSC_VER)
 
@@ -134,7 +138,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 
 /* runtime checks (DCHECK) */
+#if MEMCNT_DYNAMIC
 #include "memcnt-dcheck-msvc.c"
+#endif
 
 #elif defined(__GNUC__)
 
@@ -151,7 +157,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define MEMCNT_CHECK_wasm_simd __wasm_simd128__
 
 /* runtime checks (DCHECK) */
+#if MEMCNT_DYNAMIC
 #include "memcnt-dcheck-gnu.c"
+#endif
 
 #else
 
@@ -323,6 +331,10 @@ size_t memcnt(const void *s, int c, size_t n) { return MEMCNT_PICKED(s, c, n); }
 #endif
 #endif
 
+#ifndef MEMCNT_PICKED
+#define MEMCNT_PICKED MEMCNT_NAME(default)
+#endif
+
 /* dynamic dispatcher */
 #if MEMCNT_MULTIARCH && MEMCNT_DYNAMIC
 /* size_t memcnt(const void *s, int c, size_t n); */
@@ -393,11 +405,7 @@ void memcnt_optimize(void) {
     memcnt_impl_ = p;
 }
 
-#ifdef MEMCNT_PICKED
 static memcnt_implptr_t memcnt_impl_ = &MEMCNT_PICKED;
-#else
-static memcnt_implptr_t memcnt_impl_ = &MEMCNT_NAME(default);
-#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -409,8 +417,8 @@ size_t memcnt(const void *s, int c, size_t n) {
 }
 #endif
 
-/* try to automatize memcnt_optimize call */
 #if MEMCNT_DYNALINK
+/* try to automatize memcnt_optimize call */
 #ifdef __cplusplus
 #if __cplusplus >= 201703L
 [[maybe_unused]]
@@ -430,6 +438,8 @@ BOOL WINAPI DllMain(_In_ HINSTANCE hinstDLL, _In_ DWORD fdwReason,
         memcnt_optimize();
     return TRUE;
 }
+#else
+#error I must call memcnt_optimize on load, but I don't know how to
 #endif
 #endif
 
@@ -442,13 +452,7 @@ void memcnt_optimize(void) {}
 /* debug info */
 #if MEMCNT_DEBUG
 /* name of "best" implementation compiled in */
-const char *memcnt_impl_name_ =
-#if MEMCNT_DYNAMIC
-    STRINGIFYVAL(MEMCNT_PICKED)
-#else
-    STRINGIFYVAL(MEMCNT_NAME(default))
-#endif
-    ;
+const char *memcnt_impl_name_ = STRINGIFYVAL(MEMCNT_PICKED);
 #endif
 
 #endif

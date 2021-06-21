@@ -88,8 +88,8 @@ build a dynamically linkable memcnt library -- you probably don't need your
 library binary to work on a variety of CPUs, but if you do, you SHOULD figure
 out a way to call memcnt_optimize() yourself when the library is loaded/linked
 (such as by using DllMain on Win32). Define MEMCNT_DYNALINK to 1 if building
-a dynamic library to help with this. (Speaking of which, you may want to
-implement your own custom memcnt.h if you build a dynamic library.)
+a dynamic library to help with this. (Also, look into memcnt.h and how
+to define EXPORT if you want to build a dynamic library.)
 
 TL:DR; don't worry about calling memcnt_optimize() unless you want *the program
 YOU are writing* to work on other variants of the CPU you're writing it on
@@ -97,6 +97,9 @@ WITHOUT any need to compile the program separately for that CPU (such as if
 you're writing on an x86 CPU that supports AVX2 but the BINARY YOU COMPILE
 should also work on ones that don't.) Almost always you can run memcnt()
 directly just fine without having to do anything else.
+
+If you want to use a dynamic link library for memcnt in your program, you only
+need memcnt.h, and you should define MEMCNT_IMPORT in that case.
 
 test-memcnt.c is a test program for testing memcnt implementations and is not
 needed for use in other programs.

@@ -41,6 +41,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <string.h>
 #include <time.h>
 
+#if IMPORT
+#define MEMCNT_C 0
+#define MEMCNT_IMPORT 1
+#endif
 #include "memcnt.h"
 
 #if !defined(MEMCNT_C) || MEMCNT_C
@@ -269,8 +273,10 @@ int main(int argc, char *argv[]) {
 #else
     printf("Testing implementation '%s'\n", memcnt_impl_name_);
 #endif
+#elif IMPORT
+    puts("Testing dynamically linked implementation");
 #else
-    puts("Testing manually linked implementation");
+    puts("Testing manually statically linked implementation");
 #endif
     if (benchmark == 1) {
         puts("Benchmark: measuring approximate CPU time in microseconds");
