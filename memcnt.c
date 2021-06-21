@@ -310,7 +310,9 @@ typedef uint32_t memcnt_word_t;
 
 #ifndef MEMCNT_PICKED
 #undef MEMCNT_DEFAULT
+#ifdef __cplusplus
 #define MEMCNT_DEFAULT size_t memcnt
+#endif
 #include "memcnt-default.c"
 #elif MEMCNT_DYNAMIC
 #include "memcnt-default.c"
@@ -322,13 +324,7 @@ typedef uint32_t memcnt_word_t;
 
 /* trampoline (static dispatcher) */
 #if defined(MEMCNT_PICKED) && MEMCNT_TRAMPOLINE
-#ifdef __cplusplus
-extern "C" {
-#endif
 size_t memcnt(const void *s, int c, size_t n) { return MEMCNT_PICKED(s, c, n); }
-#ifdef __cplusplus
-}
-#endif
 #endif
 
 #ifndef MEMCNT_PICKED
@@ -407,15 +403,9 @@ void memcnt_optimize(void) {
 
 static memcnt_implptr_t memcnt_impl_ = &MEMCNT_PICKED;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 size_t memcnt(const void *s, int c, size_t n) {
     return (*memcnt_impl_)(s, c, n);
 }
-#ifdef __cplusplus
-}
-#endif
 
 #if MEMCNT_DYNALINK
 /* try to automatize memcnt_optimize call */
