@@ -87,7 +87,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /*
    to add support for a new compiler:
    1. add a new section for the compiler in the compiler-implementation table
-   2. implement memcnt_only_true_on_first_ and memcnt_atomic_set_
 */
 
 /* Compiler-Implementation Table
@@ -325,7 +324,7 @@ typedef size_t (*memcnt_implptr_t)(const void *, int, size_t);
 
 static memcnt_implptr_t memcnt_impl_;
 
-/* debug info. MEMCNT_DEBUG makes memcnt nonreentrant! */
+/* debug info */
 #if MEMCNT_DEBUG
 const char *memcnt_impl_name_;
 static char memcnt_impl_dbuf_[256];
@@ -403,7 +402,7 @@ size_t memcnt(const void *s, int c, size_t n) {
 void memcnt_optimize(void) {}
 #endif
 
-/* debug info. MEMCNT_DEBUG makes memcnt nonreentrant! */
+/* debug info */
 #if MEMCNT_DEBUG
 /* name of "best" implementation compiled in */
 const char *memcnt_impl_name_ =
