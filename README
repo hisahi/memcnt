@@ -58,8 +58,14 @@ the following:
     into your program or library.
 
 If your tools do not support the above process, you can skip all of the above
-steps by using memcnt-strict.c. It is however only a standard implementation
+steps by using memcnt-strict.c(/.h). It is however only a basic implementation
 with no optimizations.
+
+test-memcnt.c is a test program for testing memcnt implementations and is not
+needed for use in other programs.
+
+If you want to build an universal binary (or a "fat binary"), the next
+information may prove useful for you.
 
 If MEMCNT_DYNAMIC=1 is defined for memcnt.c, a dynamic dispatcher is used for
 memcnt if supported for your compiler. This allows compiling multiple
@@ -76,30 +82,32 @@ not itself be called again while running (it is not reentrant nor concurrent).
 It is recommended to place a memcnt_optimize call as one of the first things
 to do in main(); it is not a very slow function.
 
+The dynamic dispatcher should only be used if you are statically linking your
+program and want it to be a "universal" (or "fat") binary that works on a
+variety of CPUs of the same architecture. If you are statically linking for one
+architecture only, you don't need the dynamic dispatcher. The same applies if
+you want to build a dynamically linkable memcnt library -- you probably don't
+need your library binary to work on a variety of CPUs, but if you do, you SHOULD
+figure out a way to call memcnt_optimize() yourself when the library is
+loaded/linked (such as by using DllMain on Win32). Define MEMCNT_DYNALINK to 1
+if building a dynamic library to help with this. (Also, look into memcnt.h and
+how to define EXPORT if you want to build a dynamic library.)
+
 memcnt_optimize may be safely called even if the dynamic dispatcher is not
 compiled in, but will do nothing in that case. Calling memcnt_optimize again
-will likewise do nothing if it has already been run.
-
-The dynamic dispatcher should only be used if you are statically linking your
-program and want it to be a "universal" binary that works on a variety of CPUs
-of the sama architecture. If you are statically linking for one architecture
-only, you don't need the dynamic dispatcher. The same applies if you want to
-build a dynamically linkable memcnt library -- you probably don't need your
-library binary to work on a variety of CPUs, but if you do, you SHOULD figure
-out a way to call memcnt_optimize() yourself when the library is loaded/linked
-(such as by using DllMain on Win32). Define MEMCNT_DYNALINK to 1 if building
-a dynamic library to help with this. (Also, look into memcnt.h and how
-to define EXPORT if you want to build a dynamic library.)
+will likewise do nothing if it has already been run. The exception is if you
+use -strict.c/.h -- memcnt-optimize does not exist at all for them.
 
 TL:DR; don't worry about calling memcnt_optimize() unless you want *the program
 YOU are writing* to work on other variants of the CPU you're writing it on
 WITHOUT any need to compile the program separately for that CPU (such as if
 you're writing on an x86 CPU that supports AVX2 but the BINARY YOU COMPILE
-should also work on ones that don't.) Almost always you can run memcnt()
-directly just fine without having to do anything else.
+should also work on ones that don't.) If your program relies on dynamically
+linking a memcnt library, you don't need memcnt_optimize either (the library
+should call it for you).
+
+TL:DR for TL:DR; Almost always you can run memcnt() directly just fine without
+having to do anything else. Pretend you never heard of memcnt_optimize().
 
 If you want to use a dynamic link library for memcnt in your program, you only
 need memcnt.h, and you should define MEMCNT_IMPORT in that case.
-
-test-memcnt.c is a test program for testing memcnt implementations and is not
-needed for use in other programs.
