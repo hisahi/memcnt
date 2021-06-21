@@ -50,8 +50,7 @@ extern "C" {
 #elif defined(_MSC_VER) && (defined(_WIN32) || defined(_WIN64))
 #define PUBLIC __declspec(dllexport)
 #else
-#pragma message("Unknown platform, PUBLIC will be empty and function \
-                 might not be exported")
+#pragma message("cannot define PUBLIC -- memcnt might not get exported")
 #define PUBLIC
 #endif
 #elif MEMCNT_IMPORT
