@@ -90,9 +90,10 @@ that you call memcnt_optimize() yourself.
 
 TL:DR; don't worry about calling memcnt_optimize() unless you want *the program
 YOU are writing* to work on other variants of the CPU you're writing it on
-(such as if you're writing on an x86 CPU that supports AVX2 but the binary
-you compile should also work on ones that don't.) Almost always you can run
-memcnt() directly just fine without having to do anything else.
+WITHOUT any need to compile the program separately for that CPU (such as if
+you're writing on an x86 CPU that supports AVX2 but the BINARY YOU COMPILE
+should also work on ones that don't.) Almost always you can run memcnt()
+directly just fine without having to do anything else.
 
 test-memcnt.c is a test program for testing memcnt implementations and is not
 needed for use in other programs.
