@@ -69,7 +69,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
    size (as every suitable implementation is compiled), but allows the fastest
    implementation to be optimized during runtime.
    in order to pick that implementation, you must call memcnt_optimize(),
-   and while that function is running, memcnt calls are NOT allowed. */
+   and while that function is running, memcnt calls are NOT allowed.
+   (memcnt_optimize() does not need to be called by programs using a
+   dynamic/shared memcnt library; that library should call it on its own.) */
 #ifndef MEMCNT_DYNAMIC
 #define MEMCNT_DYNAMIC 0
 #endif
@@ -194,6 +196,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define MEMCNT_TRAMPOLINE MEMCNT_MULTIARCH && !MEMCNT_DYNAMIC
 #if MEMCNT_TRAMPOLINE
 #define MEMCNT_HEADER INLINE size_t
+#elif MEMCNT_MULTIARCH
+#define MEMCNT_HEADER static size_t
 #else
 #define MEMCNT_HEADER size_t
 #endif
@@ -362,13 +366,13 @@ memcnt_implptr_t memcnt_impl_choose_(memcnt_implptr_t fp, const char *s) {
 #define MEMCNT_DYNAMIC_CANDIDATE(implname)                                     \
     else if (MEMCNT_DCHECK_##implname) p = MEMCNT_DYNAMIC_CHOOSE(implname);
 
-static int memcnt_optimized = 0;
+static int memcnt_optimized_ = 0;
 
 void memcnt_optimize(void) {
     memcnt_implptr_t p;
-    if (memcnt_optimized)
+    if (memcnt_optimized_)
         return;
-    memcnt_optimized = 1;
+    memcnt_optimized_ = 1;
     if (0)
         ;
 
@@ -415,7 +419,7 @@ size_t memcnt(const void *s, int c, size_t n) {
 #elif defined(__GNUC__)
 __attribute__((unused))
 #endif
-static char memcnt_static_sentinel_ = (memcnt_optimize(), 1);
+static char memcnt_static_initializer_ = (memcnt_optimize(), 1);
 #elif defined(__GNUC__)
 static void __attribute__((constructor)) memcnt_ctor_(void) {
     memcnt_optimize();
