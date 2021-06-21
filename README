@@ -85,8 +85,11 @@ program and want it to be a "universal" binary that works on a variety of CPUs
 of the sama architecture. If you are statically linking for one architecture
 only, you don't need the dynamic dispatcher. The same applies if you want to
 build a dynamically linkable memcnt library -- you probably don't need your
-library binary to work on a variety of CPUs, but if you do, it's recommended
-that you call memcnt_optimize() yourself.
+library binary to work on a variety of CPUs, but if you do, you SHOULD figure
+out a way to call memcnt_optimize() yourself when the library is loaded/linked
+(such as by using DllMain on Win32). Define MEMCNT_DYNALINK to 1 if building
+a dynamic library to help with this. (Speaking of which, you may want to
+implement your own custom memcnt.h if you build a dynamic library.)
 
 TL:DR; don't worry about calling memcnt_optimize() unless you want *the program
 YOU are writing* to work on other variants of the CPU you're writing it on

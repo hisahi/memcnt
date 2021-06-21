@@ -34,7 +34,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef MEMCNT_H
 #define MEMCNT_H
 
+#ifdef __cplusplus
+#include <cstddef>
+using std::size_t;
+extern "C" {
+#else
 #include <stddef.h>
+#endif
 
 size_t memcnt(const void *s, int c, size_t n);
 
@@ -45,5 +51,9 @@ size_t memcnt(const void *s, int c, size_t n);
 
    if the dynamic dispatcher is not used, memcnt_optimize does nothing. */
 void memcnt_optimize(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* MEMCNT_H */

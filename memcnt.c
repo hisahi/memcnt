@@ -314,7 +314,13 @@ typedef uint32_t memcnt_word_t;
 
 /* trampoline (static dispatcher) */
 #if defined(MEMCNT_PICKED) && MEMCNT_TRAMPOLINE
+#ifdef __cplusplus
+extern "C" {
+#endif
 size_t memcnt(const void *s, int c, size_t n) { return MEMCNT_PICKED(s, c, n); }
+#ifdef __cplusplus
+}
+#endif
 #endif
 
 /* dynamic dispatcher */
@@ -393,9 +399,40 @@ static memcnt_implptr_t memcnt_impl_ = &MEMCNT_PICKED;
 static memcnt_implptr_t memcnt_impl_ = &MEMCNT_NAME(default);
 #endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 size_t memcnt(const void *s, int c, size_t n) {
     return (*memcnt_impl_)(s, c, n);
 }
+#ifdef __cplusplus
+}
+#endif
+
+/* try to automatize memcnt_optimize call */
+#if MEMCNT_DYNALINK
+#ifdef __cplusplus
+#if __cplusplus >= 201703L
+[[maybe_unused]]
+#elif defined(__GNUC__)
+__attribute__((unused))
+#endif
+static char memcnt_static_sentinel_ = (memcnt_optimize(), 1);
+#elif defined(__GNUC__)
+static void __attribute__((constructor)) memcnt_ctor_(void) {
+    memcnt_optimize();
+}
+#elif defined(_MSC_VER) && (defined(_WIN32) || defined(_WIN64))
+#include <Windows.h>
+BOOL WINAPI DllMain(_In_ HINSTANCE hinstDLL, _In_ DWORD fdwReason,
+                    _In_ LPVOID lpReserved) {
+    if (fdwReason == DLL_PROCESS_ATTACH)
+        memcnt_optimize();
+    return TRUE;
+}
+#endif
+#endif
+
 #else
 #undef MEMCNT_DYNAMIC
 #define MEMCNT_DYNAMIC 0
