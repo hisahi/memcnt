@@ -42,6 +42,16 @@ extern "C" {
 #include <stddef.h>
 #endif
 
+/* if you want to build a dynamic link library, you'll probably want to export
+   one or both of these functions. ideally you'd make it so that
+   memcnt_optimize always gets called when the library is loaded and then
+   you wouldn't even need to export it. */
+
+/* Counts the number of bytes (characters) equal to c (converted to an
+   unsigned char) in the initial n characters in an array pointed to by s. The
+   values in the array will be interpreted as unsigned chars and compared to c.
+   Returns 0 if n is 0, undefined if s is NULL or n is greater than the number
+   of unsigned chars allocated in s. */
 size_t memcnt(const void *s, int c, size_t n);
 
 /* if dynamic dispatching is compiled in, memcnt_optimize will automatically
@@ -49,7 +59,9 @@ size_t memcnt(const void *s, int c, size_t n);
    memcnt or memcnt_optimize MUST not be called while memcnt_optimize is
    (already) running; doing so results in undefined behavior.
 
-   if the dynamic dispatcher is not used, memcnt_optimize does nothing. */
+   if the dynamic dispatcher is not used, memcnt_optimize does nothing.
+   
+   you probably don't have to worry about calling this -- see README */
 void memcnt_optimize(void);
 
 #ifdef __cplusplus
