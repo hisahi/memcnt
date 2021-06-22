@@ -130,6 +130,44 @@ typedef int cputime_t;
 cputime_t getcputime(void) { return 0; }
 #endif
 
+#if PAPI
+#include <papi.h>
+#define BM4_OK 1
+int papi_evt[] = {PAPI_TOT_CYC};
+#define PAPI_EVENTS_COUNT (sizeof(papi_evt) / sizeof(papi_evt[0]))
+long long papi_val[PAPI_EVENTS_COUNT] = {0};
+void bm4_start(void) {
+    int err = PAPI_start_counters(papi_evt, PAPI_EVENTS_COUNT);
+    if (err != PAPI_OK) {
+        printf("\nPAPI_start_counters error 0x%08x (%s)\n"
+               "Try checking papi_avail and papi_component_avail\n",
+               err, PAPI_strerror(err));
+        abort();
+    }
+}
+void bm4_stop(void) {
+    int err = PAPI_stop_counters(papi_val, PAPI_EVENTS_COUNT);
+    if (err != PAPI_OK) {
+        printf("\nPAPI_stop_counters error 0x%08x (%s)\n", err,
+               PAPI_strerror(err));
+        abort();
+    }
+}
+void bm4_init(void) {
+    bm4_start();
+    bm4_stop();
+}
+unsigned long long bm4_get_cyclecount(void) {
+    return (unsigned long long)papi_val[0];
+}
+#else
+#define BM4_OK 0
+void bm4_init(void) {}
+void bm4_start(void) {}
+void bm4_stop(void) {}
+unsigned long long bm4_get_cyclecount(void) { return 0; }
+#endif
+
 #if IS_WINDOWS
 #define BM3_TYPE LARGE_INTEGER
 #define BM3_OK 1
@@ -137,13 +175,13 @@ cputime_t getcputime(void) { return 0; }
 BM3_TYPE timefreq;
 static inline void timeinit() {
     if (!QueryPerformanceFrequency(&timefreq)) {
-        printf("QueryPerformanceFrequency failure 0x%08x", GetLastError());
+        printf("\nQueryPerformanceFrequency error 0x%08x\n", GetLastError());
         abort();
     }
 }
 static inline void timecapture(BM3_TYPE *r) {
     if (!QueryPerformanceCounter(r)) {
-        printf("QueryPerformanceCounter failure 0x%08x", GetLastError());
+        printf("\nQueryPerformanceCounter error 0x%08x\n", GetLastError());
         abort();
     }
 }
@@ -246,6 +284,7 @@ int main(int argc, char *argv[]) {
     cputime_t testStart_bm2, testEnd_bm2;
     unsigned long long clockFreq, maxArraySize;
     BM3_TYPE testStart_bm3, testEnd_bm3, testDiff_bm3;
+
     int benchmark = 0, batchCount, divider, normTryCount, maxTryCount,
         minArraySize = 0, arrayMul, bm_large = 0;
     for (i = 1; i < argc; ++i) {
@@ -304,6 +343,14 @@ int main(int argc, char *argv[]) {
         puts("              method: " BM3_METHOD);
 #endif
         timeinit();
+    } else if (benchmark == 4) {
+#if !BM4_OK
+        puts("Benchmark 4 not supported on this build (must define PAPI=1)");
+        return 1;
+#else
+        puts("Benchmark: measuring perf counters via PAPI");
+#endif
+        bm4_init();
     } else if (benchmark) {
         puts("Invalid benchmark setting");
         return 2;
@@ -468,6 +515,8 @@ int main(int argc, char *argv[]) {
                     testStart_bm1 = clock(), testStart_bm2 = getcputime();
                 else if (benchmark == 3)
                     timecapture(&testStart_bm3);
+                else if (benchmark == 4)
+                    testStart_bm1 = clock(), bm4_start();
                 testCount = memcnt(buf, i, arraySize);
                 if (benchmark == 1)
                     testEnd_bm1 = clock();
@@ -476,7 +525,8 @@ int main(int argc, char *argv[]) {
                 else if (benchmark == 3) {
                     timecapture(&testEnd_bm3);
                     timediff(&testDiff_bm3, &testStart_bm3, &testEnd_bm3);
-                }
+                } else if (benchmark == 4)
+                    bm4_stop(), testEnd_bm1 = clock();
                 if (testCount == trueCount) {
                     if (benchmark == 1) {
                         unsigned long long interval =
@@ -529,6 +579,18 @@ int main(int argc, char *argv[]) {
                             puts("-");
                         bm_large =
                             interval < LARGE_ARRAY_THRESHOLD_MS * 1000ULL;
+                    } else if (benchmark == 4) {
+                        unsigned long long interval_bm1 =
+                            testEnd_bm1 - testStart_bm1;
+                        unsigned long long cycles = bm4_get_cyclecount();
+                        printf("OK     | %11llu cyc | ", cycles);
+                        if (arraySize > 10 && cycles > 0)
+                            printf("%11.2f B/cyc\n",
+                                   arraySize / (double)cycles);
+                        else
+                            puts("-");
+                        bm_large = interval_bm1 * 1000000ULL / CLOCKS_PER_SEC <
+                                   LARGE_ARRAY_THRESHOLD_MS * 1000ULL;
                     }
                 } else {
                     puts("FAIL!");
@@ -551,6 +613,6 @@ int main(int argc, char *argv[]) {
     }
     puts("ALL OK");
     if (!benchmark)
-        puts("Now try benchmarking... -b1, -b2, -b3");
+        puts("Now try benchmarking... -b1-4");
     return 0;
 }
