@@ -35,7 +35,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
    this file includes memcnt.c and thus should be compiled on its own.
    if you want to test a separate implementation or a manually picked one,
    define MEMCNT_C=0 and link one in yourself
-   (and use MEMCNT_IMPORT if dynamic linking) */
+   (or define IMPORT if dynamic linking) */
 
 #include <assert.h>
 #include <limits.h>
