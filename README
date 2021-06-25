@@ -96,7 +96,7 @@ MEMCNT_DYNALINK to 1 if building a dynamic/shared library to help with this.
 memcnt_optimize may be safely called even if the dynamic dispatcher is not
 compiled in, but will do nothing in that case. Calling memcnt_optimize again
 will likewise do nothing if it has already been run. The exception is if you
-use -strict.c/.h -- memcnt-optimize does not exist at all for them.
+use -strict.c/.h -- memcnt_optimize does not exist at all for them.
 
 TL:DR; don't worry about calling memcnt_optimize() unless you want *the program
 YOU are writing* to work on other variants of the CPU you're writing it on
