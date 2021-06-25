@@ -39,9 +39,25 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <limits.h>
 #include <stdint.h>
 
+#if __amd64__ || __x86_64__ || _WIN64 || _M_X64 || _M_AMD64 ||                 \
+    (defined(UINTPTR_MAX) && UINTPTR_MAX >= UINT64_MAX)
+#define SSE2_64 1
+#endif
+
+#ifndef UNROLL
+#define UNROLL 4
+/*
+#if SSE2_64
+#define UNROLL 4
+#else
+#define UNROLL 2
+#endif
+*/
+#endif
+
 INLINE size_t sse2_hsum_mm128_epu64(__m128i v) {
     __m128i hi = _mm_shuffle_epi32(v, 78);
-#if __amd64__ || __x86_64__ || _WIN64 || _M_X64 || _M_AMD64
+#if SSE2_64
     return (size_t)_mm_cvtsi128_si64(_mm_add_epi64(v, hi));
 #else
     __m128i vv = _mm_add_epi64(v, hi);
@@ -58,7 +74,8 @@ MEMCNT_IMPL(sse2)(const void *ptr, int value, size_t num) {
     size_t c = 0;
 
     if (num >= 32) {
-        __m128i cmp = _mm_set1_epi8((char)v), sums = _mm_setzero_si128(),
+        int k;
+        __m128i cmp = _mm_set1_epi8((char)v), sums[UNROLL],
                 totals = _mm_setzero_si128();
         uint8_t j = 1;
         const __m128i *wp;
@@ -66,19 +83,48 @@ MEMCNT_IMPL(sse2)(const void *ptr, int value, size_t num) {
             --num, c += *p++ == v;
         wp = (const __m128i *)p;
 
-        while (num >= 0x10) {
-            num -= 0x10;
-            sums = _mm_sub_epi8(sums, _mm_cmpeq_epi8(cmp, *wp++));
+#if UNROLL > 1
+        for (k = 0; k < UNROLL; ++k)
+            sums[k] = _mm_setzero_si128();
+        while (num >= 0x10 * UNROLL) {
+            __m128i tmp[UNROLL];
+            num -= 0x10 * UNROLL;
+            for (k = 0; k < UNROLL; ++k)
+                tmp[k] = *wp++;
+            for (k = 0; k < UNROLL; ++k)
+                sums[k] = _mm_sub_epi8(sums[k], _mm_cmpeq_epi8(cmp, tmp[k]));
 
             if (++j == 0) {
-                totals = _mm_add_epi64(totals,
-                                       _mm_sad_epu8(sums, _mm_setzero_si128()));
-                sums = _mm_setzero_si128();
+                for (k = 0; k < UNROLL; ++k)
+                    totals = _mm_add_epi64(
+                        totals, _mm_sad_epu8(sums[k], _mm_setzero_si128()));
+                for (k = 0; k < UNROLL; ++k)
+                    sums[k] = _mm_setzero_si128();
                 j = 1;
             }
         }
 
-        totals = _mm_add_epi64(totals, _mm_sad_epu8(sums, _mm_setzero_si128()));
+        for (k = 0; k < UNROLL; ++k)
+            totals = _mm_add_epi64(totals,
+                                   _mm_sad_epu8(sums[k], _mm_setzero_si128()));
+        j = 1;
+#endif
+        sums[0] = _mm_setzero_si128();
+
+        while (num >= 0x10) {
+            num -= 0x10;
+            sums[0] = _mm_sub_epi8(sums[0], _mm_cmpeq_epi8(cmp, *wp++));
+
+            if (++j == 0) {
+                totals = _mm_add_epi64(
+                    totals, _mm_sad_epu8(sums[0], _mm_setzero_si128()));
+                sums[0] = _mm_setzero_si128();
+                j = 1;
+            }
+        }
+
+        totals =
+            _mm_add_epi64(totals, _mm_sad_epu8(sums[0], _mm_setzero_si128()));
         c += sse2_hsum_mm128_epu64(totals);
         p = (const unsigned char *)wp;
     }
