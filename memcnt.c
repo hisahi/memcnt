@@ -433,7 +433,7 @@ BOOL WINAPI DllMain(_In_ HINSTANCE hinstDLL, _In_ DWORD fdwReason,
     return TRUE;
 }
 #else
-#error I must call memcnt_optimize on load, but I don't know how to
+#error I must call memcnt_optimize on load, but I do not know how to
 #endif
 #endif
 
